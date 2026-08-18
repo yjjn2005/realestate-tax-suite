@@ -142,7 +142,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
     <div class="ok" id="apiOk"></div>
     <div id="apiResult" style="margin-top:8px"></div>
     <div class="warn">
-      ⚠️ data.go.kr의 실거래가·공시가격 API는 서버간 통신(Server-to-Server) 용도로 설계되어 있어, 브라우저(GitHub Pages)에서 직접 호출 시 <b>CORS 정책으로 차단될 가능성이 높습니다</b>. 이 경우 아래 "조회 실패" 안내가 표시되며, 각 탭에서 <b>공시가격·시세를 직접 입력</b>하면 계산은 정상 작동합니다. 안정적인 자동조회를 원하시면 별도의 서버리스 프록시(Cloudflare Worker 등) 구축이 필요합니다 — 원하시면 별도로 구성해 드릴 수 있습니다.
+      ⚠️ data.go.kr 실거래가 API는 브라우저 직접호출이 CORS로 막히는 경우가 많아, 실패 시 공개 CORS 프록시(allorigins.win)를 경유해 자동 재시도합니다. 공개 프록시는 속도가 느리거나 간헐적으로 응답이 지연될 수 있습니다. 공시가격은 data.go.kr에 일반공개 API가 없어 자동조회가 불가하며, 부동산공시가격알리미에서 직접 확인해 입력해야 합니다.
     </div>
   </div>
 </section>
@@ -654,21 +654,60 @@ function cgPick(i){ cgSelYear=i; cgRender(); }
 $('cg_owner').addEventListener('change',cgRender);
 
 /* ══════════════════ 공공데이터 API 자동조회 ══════════════════ */
+// data.go.kr은 브라우저(클라이언트) 직접호출 시 CORS로 막히는 경우가 많아,
+// 1) 직접 호출 시도 → 2) 실패 시 공개 CORS 프록시(allorigins) 경유 재시도 순으로 처리한다.
+async function tryFetch(url){
+  try{
+    const res = await fetch(url);
+    if(!res.ok) throw new Error('HTTP '+res.status);
+    return {text: await res.text(), via:'direct'};
+  }catch(e1){
+    const proxied = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
+    const res2 = await fetch(proxied);
+    if(!res2.ok) throw new Error('프록시 경유도 실패 (HTTP '+res2.status+')');
+    return {text: await res2.text(), via:'proxy'};
+  }
+}
+
+function parseRTMS(xmlText){
+  const doc = new DOMParser().parseFromString(xmlText, 'text/xml');
+  if(doc.querySelector('parsererror')) return null;
+  const resultCode = doc.querySelector('resultCode')?.textContent;
+  const resultMsg = doc.querySelector('resultMsg')?.textContent;
+  const items = Array.from(doc.querySelectorAll('item'));
+  return {resultCode, resultMsg, items};
+}
+
 async function fetchRTMS(){
   const key=$('svcKey').value.trim(), lawd=$('lawdCd').value.trim(), ymd=$('dealYmd').value.trim();
   const errEl=$('apiErr'), okEl=$('apiOk'), resEl=$('apiResult');
   errEl.style.display='none'; okEl.style.display='none'; resEl.innerHTML='';
   if(!key||!lawd||!ymd){ errEl.style.display=''; errEl.textContent='인증키·법정동코드·계약년월을 모두 입력해 주세요.'; return; }
-  const url=`https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=20&pageNo=1`;
+  resEl.innerHTML = '<div style="font-size:12px;color:var(--ink-soft)">조회 중…</div>';
+  const url=`https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeURIComponent(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=30&pageNo=1`;
   try{
-    const res=await fetch(url);
-    const text=await res.text();
-    if(!res.ok) throw new Error('HTTP '+res.status);
-    okEl.style.display=''; okEl.textContent='조회 성공 — 아래 원본 응답(XML/JSON)을 확인하세요.';
-    resEl.innerHTML=`<pre style="white-space:pre-wrap;font-size:11px;background:#F7F9FB;border:1px solid var(--line);border-radius:4px;padding:10px;max-height:260px;overflow:auto">${text.replace(/</g,'&lt;').slice(0,4000)}</pre>`;
+    const {text, via} = await tryFetch(url);
+    const parsed = parseRTMS(text);
+    if(!parsed || (parsed.resultCode && parsed.resultCode!=='000' && parsed.resultCode!=='00')){
+      throw new Error((parsed && parsed.resultMsg) || '응답 파싱 실패 — 인증키 또는 파라미터를 확인해 주세요.');
+    }
+    if(parsed.items.length===0){
+      okEl.style.display=''; okEl.textContent=`조회 성공(${via==='proxy'?'프록시 경유':'직접호출'}) — 해당 조건의 거래 내역이 없습니다.`;
+      resEl.innerHTML=''; return;
+    }
+    okEl.style.display='';
+    okEl.textContent = `조회 성공(${via==='proxy'?'공개 CORS 프록시 경유':'직접호출'}) — ${parsed.items.length}건. 아래 표에서 실거래가를 확인해 취득세·재산세 탭에 직접 입력하세요.`;
+    const g=(el,tag)=>el.querySelector(tag)?.textContent?.trim()||'';
+    const rows = parsed.items.map(it=>{
+      const apt=g(it,'aptNm'), area=g(it,'excluUseAr'), amt=g(it,'dealAmount').replace(/,/g,'').trim(),
+            floor=g(it,'floor'), y=g(it,'dealYear'), m=g(it,'dealMonth'), d=g(it,'dealDay'), by=g(it,'buildYear');
+      return `<tr><td>${apt}</td><td>${area}㎡</td><td>${floor}층</td><td>${by}</td><td>${y}.${m}.${d}</td><td style="text-align:right;font-weight:700">${(+amt).toLocaleString()}만원</td></tr>`;
+    }).join('');
+    resEl.innerHTML = `<div style="overflow-x:auto"><table class="ref"><tr><th>단지명</th><th>전용면적</th><th>층</th><th>건축년도</th><th>계약일</th><th>거래금액</th></tr>${rows}</table></div>
+      <div class="hint" style="margin-top:6px">※ 공시가격은 data.go.kr에 일반공개 REST API가 없어 자동조회를 지원하지 않습니다 — <a href="https://www.realtyprice.kr" target="_blank" rel="noopener">부동산공시가격알리미</a>에서 직접 확인해 재산세·종부세 탭에 입력해 주세요.</div>`;
   }catch(e){
     errEl.style.display='';
-    errEl.textContent='조회 실패: '+e.message+' — 브라우저의 CORS 정책으로 data.go.kr에 직접 접근이 차단되었을 가능성이 높습니다. 각 탭에서 공시가격·시세를 직접 입력해 계산해 주세요.';
+    errEl.textContent='조회 실패: '+e.message+' — 인증키가 실거래가(RTMSDataSvcAptTradeDev) API에 활용신청되어 있는지, 법정동코드·계약년월 형식이 올바른지 확인해 주세요. 계속 실패하면 각 탭에서 시세를 직접 입력해 계산할 수 있습니다.';
   }
 }
 
