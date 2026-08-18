@@ -142,7 +142,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
     <div class="ok" id="apiOk"></div>
     <div id="apiResult" style="margin-top:8px"></div>
     <div class="warn">
-      ⚠️ data.go.kr 실거래가 API는 브라우저 직접호출이 CORS로 막히는 경우가 많아, 실패 시 공개 CORS 프록시(allorigins.win)를 경유해 자동 재시도합니다. 공개 프록시는 속도가 느리거나 간헐적으로 응답이 지연될 수 있습니다. 공시가격은 data.go.kr에 일반공개 API가 없어 자동조회가 불가하며, 부동산공시가격알리미에서 직접 확인해 입력해야 합니다.
+      ⚠️ data.go.kr 실거래가 API는 브라우저 직접호출이 CORS로 막히는 경우가 많아, 실패 시 공개 CORS 프록시 3곳(corsproxy.io → allorigins.win → codetabs.com)을 순서대로 경유해 자동 재시도합니다. 다만 이런 무료 공개 프록시는 제3자가 운영하는 서비스라 예고 없이 느려지거나 중단될 수 있어 100% 신뢰하기는 어렵습니다. 더 안정적으로 쓰려면 본인 소유의 Cloudflare Worker(무료)로 전용 프록시를 만드는 방법이 있으니 필요하시면 말씀해 주세요. 공시가격은 data.go.kr에 일반공개 API가 없어 자동조회가 불가하며, 부동산공시가격알리미에서 직접 확인해 입력해야 합니다.
     </div>
   </div>
 </section>
@@ -656,16 +656,28 @@ $('cg_owner').addEventListener('change',cgRender);
 /* ══════════════════ 공공데이터 API 자동조회 ══════════════════ */
 // data.go.kr은 브라우저(클라이언트) 직접호출 시 CORS로 막히는 경우가 많아,
 // 1) 직접 호출 시도 → 2) 실패 시 공개 CORS 프록시(allorigins) 경유 재시도 순으로 처리한다.
+const CORS_PROXIES = [
+  u => 'https://corsproxy.io/?url=' + encodeURIComponent(u),
+  u => 'https://api.allorigins.win/raw?url=' + encodeURIComponent(u),
+  u => 'https://api.codetabs.com/v1/proxy?quest=' + encodeURIComponent(u)
+];
 async function tryFetch(url){
   try{
     const res = await fetch(url);
     if(!res.ok) throw new Error('HTTP '+res.status);
     return {text: await res.text(), via:'direct'};
   }catch(e1){
-    const proxied = 'https://api.allorigins.win/raw?url=' + encodeURIComponent(url);
-    const res2 = await fetch(proxied);
-    if(!res2.ok) throw new Error('프록시 경유도 실패 (HTTP '+res2.status+')');
-    return {text: await res2.text(), via:'proxy'};
+    for(const build of CORS_PROXIES){
+      try{
+        const res = await fetch(build(url));
+        if(!res.ok) continue;
+        const text = await res.text();
+        const t = text.trim();
+        const looksHtml = t.startsWith('<!DOCTYPE') || t.startsWith('<html');
+        if(!looksHtml && (t.startsWith('<') || t.startsWith('{'))) return {text, via:'proxy'};
+      }catch(e2){ /* 다음 프록시 시도 */ }
+    }
+    throw new Error('직접호출 및 공개 프록시 3곳 모두 실패');
   }
 }
 
