@@ -116,19 +116,19 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 
 <section>
   <div class="sec-label">
-    <span class="tag">API</span>
-    <h2>공공데이터 자동조회 (선택)</h2>
-    <small>data.go.kr 인증키로 실거래가·공시가격 자동조회 시도</small>
+    <span class="tag">1단계</span>
+    <h2>아파트 단지 검색</h2>
+    <small>구·동·단지명·평형만 입력하면 됩니다 — 법정동코드는 몰라도 됩니다</small>
   </div>
   <div class="card">
     <div class="grid">
       <div class="field" style="grid-column:1/-1">
-        <label>공공데이터포털 인증키 (Encoding/Decoding 키 모두 자동인식)</label>
+        <label>공공데이터포털 인증키</label>
         <input type="text" id="svcKey" placeholder="data.go.kr 마이페이지 &gt; 개발계정 &gt; 국토교통부_아파트매매 실거래자료 API에서 발급받은 키">
-        <div class="hint">"활용신청" 승인이 완료된 키여야 조회됩니다 (신청 직후엔 승인까지 1~2시간 걸릴 수 있음)</div>
+        <div class="hint">"활용신청" 승인이 완료된 키여야 조회됩니다 (Encoding/Decoding 키 모두 자동인식)</div>
       </div>
       <div class="field">
-        <label>구/시군구 선택</label>
+        <label>구 선택</label>
         <select id="lawdCd">
           <option value="11110">종로구</option><option value="11140">중구</option><option value="11170">용산구</option>
           <option value="11200">성동구</option><option value="11215">광진구</option><option value="11230">동대문구</option>
@@ -140,31 +140,36 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
           <option value="11650">서초구</option><option value="11680" selected>강남구</option><option value="11710">송파구</option>
           <option value="11740">강동구</option>
         </select>
-        <div class="hint">서울 외 지역은 아래에 5자리 코드를 직접 입력하세요</div>
+        <div class="hint">서울 외 지역만 아래 코드란에 5자리 숫자로 직접 입력(선택)</div>
       </div>
       <div class="field">
-        <label>법정동코드 직접입력(선택, 숫자 5자리만)</label>
-        <input type="text" id="lawdCdManual" placeholder="예: 41135 (경기 등 목록에 없는 지역만)">
-        <div class="hint">동 이름이 아니라 숫자 코드입니다. 서울은 위 드롭다운만 쓰면 되니 비워두세요.</div>
+        <label>동(洞) 이름 — 참고용, 검색엔 미사용</label>
+        <input type="text" id="dongNameRef" placeholder="예: 문정동">
+        <div class="hint">실거래가 API는 구 단위까지만 필터링됩니다 — 아래 단지명으로 정확히 좁혀집니다</div>
       </div>
       <div class="field">
-        <label>단지명 검색어</label>
-        <input type="text" id="aptQuery" placeholder="예: 래미안강남힐즈">
+        <label>단지명</label>
+        <input type="text" id="aptQuery" placeholder="예: 올림픽훼밀리">
       </div>
       <div class="field">
-        <label>건물 동(선택, 필터용)</label>
-        <input type="text" id="aptDongFilter" placeholder="예: 105">
+        <label>평형(선택, 참고용)</label>
+        <input type="number" id="pyeongInput" placeholder="예: 34" step="1" oninput="pyeongToArea()">
+        <div class="hint">공급면적 기준 대략값 — 넣으면 전용면적을 자동 추정합니다</div>
       </div>
       <div class="field">
-        <label>전용면적(㎡, 선택)</label>
+        <label>전용면적(㎡)</label>
         <input type="number" id="aptAreaFilter" placeholder="예: 84.7" step="0.1">
       </div>
       <div class="field">
         <label>면적 오차허용(±㎡)</label>
-        <input type="number" id="aptAreaTol" value="1" step="0.1">
+        <input type="number" id="aptAreaTol" value="2" step="0.1">
       </div>
       <div class="field">
-        <label>층(선택, 필터용)</label>
+        <label>건물 동(棟)번호(선택)</label>
+        <input type="text" id="aptDongFilter" placeholder="예: 105">
+      </div>
+      <div class="field">
+        <label>층(선택)</label>
         <input type="text" id="aptFloorFilter" placeholder="예: 10">
       </div>
       <div class="field">
@@ -753,9 +758,16 @@ function parseRTMS(xmlText){
   return {resultCode, resultMsg, items};
 }
 
+// 평형(공급면적 기준) → 전용면적(㎡) 대략 환산 — 평형 × 2.46 (34평≈84㎡ 기준 근사치)
+function pyeongToArea(){
+  const p = parseFloat($('pyeongInput').value);
+  if(!p || isNaN(p)) return;
+  const est = Math.round(p*2.46*10)/10;
+  $('aptAreaFilter').value = est;
+}
+
 // 만원 단위 금액을 "24억 7,000만원" 형태로 명확하게 표기 (오독 방지)
-function fmtManwon(manwon){
-  const eok = Math.floor(manwon/10000);
+function fmtManwon(manwon){  const eok = Math.floor(manwon/10000);
   const rest = manwon - eok*10000;
   const parts=[];
   if(eok>0) parts.push(eok.toLocaleString()+'억');
@@ -765,12 +777,8 @@ function fmtManwon(manwon){
 
 async function fetchRTMS(){
   const keyRaw=$('svcKey').value.trim();
-  const manualCode = $('lawdCdManual').value.trim();
-  const lawd = /^\d{5}$/.test(manualCode) ? manualCode : $('lawdCd').value.trim();
-  let manualIgnoredNote = '';
-  if(manualCode && !/^\d{5}$/.test(manualCode)){
-    manualIgnoredNote = `"법정동코드 직접입력"에 숫자 5자리가 아닌 값("${manualCode}")이 있어 무시하고 "구/시군구 선택" 값으로 진행합니다. `;
-  }
+  const lawd = $('lawdCd').value.trim();
+  const manualIgnoredNote = '';
   const query=$('aptQuery').value.trim();
   const dongFilter=$('aptDongFilter').value.trim();
   const areaFilter = $('aptAreaFilter').value.trim() ? parseFloat($('aptAreaFilter').value) : null;
@@ -871,7 +879,34 @@ async function fetchRTMS(){
         <button class="apibtn" onclick="applyDirect(${avg},'acq')">평균가 → 취득세 반영</button>
         <button class="apibtn" onclick="applyDirect(${latest.amt},'sale')">최근가 → 양도가 반영</button>
       </div>
+    </div>
+    <div class="card" style="background:#FBF3E5;border-color:var(--gold);margin-top:8px">
+      <div style="font-size:11px;font-weight:700;color:#7A5A17;letter-spacing:.08em;margin-bottom:6px">2단계 — 추정 공시가격 → 재산세·종부세 반영</div>
+      <div class="hint" style="margin:0 0 8px">
+        공시가격은 국토부가 별도로 고시하는 값이라 실거래가와 다르며, 단지명만으로 정확히 자동조회하는 공개 API는 없습니다. 대신 <b>현실화율(공시가격÷시세 비율)</b>을 적용한 추정치를 계산해 드립니다 — 최근 정부 목표 수준인 <b>69%</b>를 기본값으로 두었고 직접 조정할 수 있습니다.
+      </div>
+      <div style="display:flex;align-items:flex-end;gap:12px;flex-wrap:wrap">
+        <div class="field" style="width:140px;margin:0">
+          <label>현실화율(%)</label>
+          <input type="number" id="realizeRatio" value="69" step="0.5" min="30" max="100" oninput="renderEstimatedGosiga(${latest.amt},${avg})">
+        </div>
+        <div>
+          <div class="hint" style="margin:0">최근가 기준 추정 공시가격</div>
+          <div id="gosigaLatest" style="font-size:18px;font-weight:800;color:#7A5A17;font-feature-settings:var(--mono-feat)"></div>
+        </div>
+        <div>
+          <div class="hint" style="margin:0">평균가 기준 추정 공시가격</div>
+          <div id="gosigaAvg" style="font-size:18px;font-weight:800;color:#7A5A17;font-feature-settings:var(--mono-feat)"></div>
+        </div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="apibtn" style="background:#B3862B" onclick="applyGosiga(${latest.amt},'pt')">최근가 기준 → 재산세 반영</button>
+        <button class="apibtn" style="background:#B3862B" onclick="applyGosiga(${avg},'pt')">평균가 기준 → 재산세 반영</button>
+        <button class="apibtn" style="background:#B3862B" onclick="applyGosiga(${latest.amt},'jb')">최근가 기준 → 종부세 반영</button>
+      </div>
+      <div class="hint" style="margin-top:8px">※ 정확한 공식 공시가격이 필요하시면 <a href="https://www.realtyprice.kr" target="_blank" rel="noopener">부동산공시가격알리미</a>에서 주소로 직접 조회해 입력하는 것이 가장 정확합니다.</div>
     </div>`;
+  renderEstimatedGosiga(latest.amt, avg);
 
   window.__rtmsItems = allItems;
   const rows = allItems.map((it,idx)=>
@@ -886,8 +921,33 @@ async function fetchRTMS(){
       </td>
     </tr>`
   ).join('');
-  resEl.innerHTML = `<div style="overflow-x:auto"><table class="ref"><tr><th>단지/동</th><th>전용면적</th><th>층</th><th>건축년도</th><th>계약일</th><th>거래금액</th><th>반영</th></tr>${rows}</table></div>
-    <div class="hint" style="margin-top:6px">※ 공시가격은 별도 공개 API가 없어 자동조회를 지원하지 않습니다 — <a href="https://www.realtyprice.kr" target="_blank" rel="noopener">부동산공시가격알리미</a>에서 직접 확인해 재산세·종부세 탭에 입력해 주세요.</div>`;
+  resEl.innerHTML = `<div style="overflow-x:auto"><table class="ref"><tr><th>단지/동</th><th>전용면적</th><th>층</th><th>건축년도</th><th>계약일</th><th>거래금액</th><th>반영</th></tr>${rows}</table></div>`;
+}
+
+function renderEstimatedGosiga(latestAmt, avgAmt){
+  const ratio = (parseFloat($('realizeRatio')?.value)||69)/100;
+  const gLatest = Math.round(latestAmt*ratio);
+  const gAvg = Math.round(avgAmt*ratio);
+  const elL=$('gosigaLatest'), elA=$('gosigaAvg');
+  if(elL) elL.textContent = fmtManwon(gLatest);
+  if(elA) elA.textContent = fmtManwon(gAvg);
+  window.__estGosigaLatest = gLatest;
+  window.__estGosigaAvg = gAvg;
+}
+function applyGosiga(baseAmt, target){
+  const ratio = (parseFloat($('realizeRatio')?.value)||69)/100;
+  const gosigaManwon = Math.round(baseAmt*ratio);
+  const eok = gosigaManwon/10000; // 만원 → 억원
+  if(target==='pt'){
+    $('pt_price').value = eok;
+    calcProp();
+    showMain(1);
+  } else if(target==='jb'){
+    $('jb_price').value = eok;
+    jbRender();
+    showMain(2);
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 function applyRTMS(idx, target){
