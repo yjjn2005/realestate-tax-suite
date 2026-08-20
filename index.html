@@ -125,7 +125,9 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
       <div class="field" style="grid-column:1/-1">
         <label>공공데이터포털 인증키</label>
         <input type="text" id="svcKey" placeholder="data.go.kr 마이페이지 &gt; 개발계정 &gt; 국토교통부_아파트매매 실거래자료 API에서 발급받은 키">
-        <div class="hint">"활용신청" 승인이 완료된 키여야 조회됩니다 (Encoding/Decoding 키 모두 자동인식)</div>
+        <div class="hint">"활용신청" 승인이 완료된 키여야 조회됩니다 (Encoding/Decoding 키 모두 자동인식) · 조회에 성공하면 <b>이 브라우저에만</b> 저장돼 다음 방문 때 자동입력됩니다
+          <button type="button" onclick="clearSvcKey()" style="margin-left:6px;padding:2px 8px;font-size:11px;border:1px solid var(--line-strong);background:#fff;border-radius:4px;cursor:pointer;font-family:inherit">저장키 삭제</button>
+        </div>
       </div>
       <div class="field">
         <label>① 구 선택</label>
@@ -227,6 +229,13 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
       <div class="field" style="grid-column:1/-1">
         <label class="check" style="padding-top:0"><input type="checkbox" id="aq_family"> 배우자·직계존비속 등 특수관계인 간 거래</label>
         <div class="hint">시세보다 현저히 낮은 대가(시세 30% 또는 3억원 초과 인하)일 경우 2026.1.1 취득분부터 증여로 간주되어 무상취득세율이 적용될 수 있습니다</div>
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <div style="display:flex;gap:16px;flex-wrap:wrap">
+          <label class="check" style="padding-top:0;display:none" id="aq_optFirst"><input type="checkbox" id="aq_first"> 생애최초 주택 구입 (12억 이하 · 취득세 최대 200만원 감면)</label>
+          <label class="check" style="padding-top:0;display:none" id="aq_optTemp2"><input type="checkbox" id="aq_temp2"> 일시적 2주택 (종전주택 처분 예정 — 중과 배제)</label>
+          <label class="check" style="padding-top:0;display:none" id="aq_optInherit"><input type="checkbox" id="aq_inheritOne"> 무주택 세대가 1주택 상속 (0.8% 세율특례)</label>
+        </div>
       </div>
     </div>
   </div>
@@ -348,28 +357,32 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
   <div class="detail-body">
     <b>취득세</b>
     <ul>
-      <li>1주택: 6억 이하 1%, 6~9억 구간 선형(1~3%), 9억 초과 3%. 2주택: 비조정 1~3%(1주택과 동일), 조정 8%. 3주택: 비조정 8%, 조정 12%. 4주택 이상: 12%. 법인: 12%.</li>
-      <li>지방교육세: 표준세율 구간 0.1~0.3%, 중과(8%,12%) 구간 0.4%. 농어촌특별세: 전용 85㎡ 초과 시 0.2%(표준) / 0.6%(8% 중과) / 1.0%(12% 중과), 국민주택 규모 이하는 비과세.</li>
-      <li>무상취득(증여): 조정대상지역 3억원 이상 12%, 그 외 3.5%. 상속: 2.8%.</li>
+      <li>1주택: 6억 이하 1%, 6~9억 구간 선형(1~3%), 9억 초과 3%. 2주택: 비조정 1~3%(1주택과 동일), 조정 8%(일시적 2주택 체크 시 중과 배제). 3주택: 비조정 8%, 조정 12%. 4주택 이상·법인: 12%.</li>
+      <li>지방교육세: 주택 유상거래는 (표준세율×50%)×20% = 표준세율×10% → 0.1~0.3%, 중과(8%·12%) 구간 0.4%. 농어촌특별세: 전용 85㎡ 초과 시 0.2%(표준)/0.6%(8% 중과)/1.0%(12% 중과), 국민주택 규모 이하는 비과세.</li>
+      <li>무상취득(증여): 조정대상지역 3억원 이상 12%, 그 외 3.5%. 상속: 2.8%(무상취득 지방교육세 0.16%), <b>무주택 세대가 주택을 상속</b>받는 경우 0.8% 세율특례(지방교육세 미부과)로 계산.</li>
+      <li>생애최초 주택 구입(취득가액 12억원 이하): 취득세를 <b>최대 200만원</b>까지 감면(지방세특례제한법 제36조의3). 지방교육세·농특세는 감면 전 세율 기준으로 그대로 계산합니다.</li>
       <li>2026.1.1 취득분부터 특수관계인 간 현저한 저가 거래(시세 30% 또는 3억원 초과 인하)는 증여로 간주되어 무상취득세율이 적용될 수 있음.</li>
     </ul>
     <b>재산세</b>
     <ul>
-      <li>공정시장가액비율: 1세대1주택(공시가격 9억 이하) 3억 이하 43%·3~6억 44%·6억 초과 45%, 그 외 60%.</li>
-      <li>세율: 1주택 특례 0.05~0.35%(4단계 누진), 일반 0.1~0.4%(4단계 누진).</li>
+      <li>공정시장가액비율: 1세대1주택 3억 이하 43%·3~6억 44%·6억 초과 45%(<b>공시가격 9억 초과여도 적용</b>), 그 외 60%.</li>
+      <li>세율: 1세대1주택이면서 <b>공시가격 9억원 이하</b>일 때만 특례세율 0.05~0.35%, 그 밖에는 표준세율 0.1~0.4%(4단계 누진).</li>
       <li>부가세: 지방교육세 = 재산세 본세 × 20%, 도시지역분 = 과세표준 × 0.14%.</li>
       <li>세부담상한: 공시가격 3억 이하 전년 105%, 3~6억 110%, 6억 초과 130% 상한 적용(전년도 세액 입력 시).</li>
     </ul>
     <b>종합부동산세</b>
     <ul>
-      <li>2026(현행): 1주택 공제 12억(거주무관)·다주택 9억, FMV 60%, 세액공제 한도 없음(최대80%).</li>
-      <li>2027: 거주1주택 14억/비거주 9억, 다주택 4억+5억×거주비중, FMV 70%, 세액공제 한도 800만원.</li>
-      <li>2028~29: 주택수 무관 가액 단일세율(최고5.0%), FMV 70~80%, 세액공제 보유/거주 중 유리한 것 선택·한도 600만원.</li>
-      <li>농어촌특별세 20% 별도 가산.</li>
+      <li>2026(현행): 1주택 공제 12억(거주무관)·다주택 9억, 공정시장가액비율 60%, 연령+보유 세액공제 한도 없음(최대 80%) — <b>현행법상 거주요건이 없으므로 비거주 1주택도 공제 적용</b>.</li>
+      <li>2027: 거주1주택 14억/비거주 9억, 다주택 4억+5억×거주비중, 공정시장가액비율 70%, 세액공제 한도 800만원.</li>
+      <li>2028~29: 주택수 무관 가액 단일세율(최고 5.0%), 공정시장가액비율 70~80%, 세액공제는 보유/거주 중 유리한 것 선택·한도 600만원.</li>
+      <li><b>재산세 이중과세 조정</b>: 종부세 과세표준에 대응하는 재산세 상당액(종부세 과표×재산세 공정시장가액비율 60%에 표준세율 적용)을 산출세액에서 공제한 뒤 세액공제를 적용합니다.</li>
+      <li>농어촌특별세 20% 별도 가산. 세부담상한(150%·300%)은 전년도 납부세액이 필요해 반영하지 않았고, 부부 공동명의 1주택 특례(각 9억 공제 ↔ 단독명의 과세방식 선택)도 반영하지 않았습니다. 다주택의 재산세 공제는 합산 공시가격을 한 채로 본 근사치입니다.</li>
     </ul>
     <b>양도소득세</b>
     <ul>
-      <li>12억 초과분만 안분과세(비과세 12억). 장특공제→2026·27년 보유4%+거주4%(최대80%), 2028년 거주6%+보유2%(한도20억), 2029년~ 거주8%(한도10억).</li>
+      <li><b>보유 2년 미만</b>은 1세대1주택 비과세·장기보유공제 배제 후 단기 중과세율(1년 미만 70%, 1~2년 60%) 적용.</li>
+      <li>보유·거주 2년 이상: 12억 초과분만 안분과세(12억까지 비과세). 장기보유특별공제(표2) → 2026·27년 보유4%+거주4%(최대80%), 2028년 거주6%+보유2%(공제한도 20억), 2029년~ 거주8%(공제한도 10억). <b>보유 3년 미만이면 장특공제 0%</b>.</li>
+      <li>거주 2년 미만(비과세 배제)은 일반 장기보유공제(표1) 적용 — 3년 이상부터 연 2%, 15년 이상 30% 한도.</li>
       <li>기본공제 250만원(인별), 기본세율 6~45% 누진, 지방소득세 10% 가산.</li>
       <li>부부 공동명의(50:50)는 인별 과세로 차익·기본공제·세율을 각자 적용해 합산, 공제한도도 지분만큼 배분.</li>
     </ul>
@@ -415,6 +428,11 @@ function showMain(n){
 }
 
 /* ══════════════════ 취득세 ══════════════════ */
+// 1주택 표준세율: 6억 이하 1%, 6~9억 선형(1~3%), 9억 초과 3%
+function aqStdRate(p){ if(p<=6) return 1.0; if(p>=9) return 3.0; return 1 + (p-6)*(2/3); }
+// 지방교육세 = (표준세율 × 50%) × 20% = 표준세율 × 10% (주택 유상거래)
+function aqEduRate(r){ return r<=1 ? 0.1 : (r>=3 ? 0.3 : +(r*0.1).toFixed(3)); }
+
 function calcAcq(){
   const price = num('aq_price'); // 억원
   const houses = +$('aq_houses').value;
@@ -424,25 +442,35 @@ function calcAcq(){
   const over85 = segVal('aq_seg_area')==='over';
   $('aq_familyWarn').style.display = $('aq_family').checked ? '' : 'none';
 
-  let rate, eduRate, ruleTxt;
+  // 조건에 해당할 때만 옵션 노출 (해당 없으면 체크값 무시)
+  const canFirst   = corp==='N' && type==='paid' && houses===1 && price<=12;
+  const canTemp2   = corp==='N' && type==='paid' && houses===2 && adj==='Y';
+  const canInhOne  = corp==='N' && type==='inherit';
+  $('aq_optFirst').style.display  = canFirst ? '' : 'none';
+  $('aq_optTemp2').style.display  = canTemp2 ? '' : 'none';
+  $('aq_optInherit').style.display= canInhOne ? '' : 'none';
+  const first = canFirst && $('aq_first').checked;
+  const temp2 = canTemp2 && $('aq_temp2').checked;
+  const inhOne= canInhOne && $('aq_inheritOne').checked;
+
+  let rate, eduRate, ruleTxt, eduNote='';
   if(corp==='Y'){
     rate=12; eduRate=0.4; ruleTxt='법인 취득 — 일괄 12%';
   } else if(type==='gift'){
     if(adj==='Y' && price>=3){ rate=12; eduRate=0.4; ruleTxt='조정대상지역 3억원 이상 무상취득(증여) — 12%'; }
     else { rate=3.5; eduRate=0.3; ruleTxt='일반 무상취득(증여) — 3.5%'; }
   } else if(type==='inherit'){
-    rate=2.8; eduRate=0.16; ruleTxt='상속 취득 — 2.8%';
+    if(inhOne){ rate=0.8; eduRate=0; ruleTxt='무주택 세대의 1주택 상속 — 0.8% 세율특례'; eduNote=' · 세율특례로 미부과'; }
+    else { rate=2.8; eduRate=0.16; ruleTxt='상속 취득 — 2.8%'; }
   } else {
     // 유상매매
-    function stdRate(p){ // 1주택 표준세율 (억원) — 6억 1% ~ 9억 3% 선형
-      if(p<=6) return 1.0;
-      if(p>=9) return 3.0;
-      return 1 + (p-6)*(2/3);
-    }
-    if(houses===1){ rate=stdRate(price); eduRate = rate<=1?0.1: rate<3?+(0.1+(rate-1)/2*0.2).toFixed(2):0.3; ruleTxt='1주택 표준세율(1~3%, 6~9억 선형)'; }
+    if(houses===1){ rate=aqStdRate(price); eduRate=aqEduRate(rate); ruleTxt='1주택 표준세율(1~3%, 6~9억 선형)'; }
     else if(houses===2){
-      if(adj==='Y'){ rate=8; eduRate=0.4; ruleTxt='2주택 · 조정대상지역 — 8% 중과'; }
-      else { rate=stdRate(price); eduRate = rate<=1?0.1: rate<3?+(0.1+(rate-1)/2*0.2).toFixed(2):0.3; ruleTxt='2주택 · 비조정지역 — 표준세율(1주택과 동일)'; }
+      if(adj==='Y' && !temp2){ rate=8; eduRate=0.4; ruleTxt='2주택 · 조정대상지역 — 8% 중과'; }
+      else {
+        rate=aqStdRate(price); eduRate=aqEduRate(rate);
+        ruleTxt = (adj==='Y') ? '2주택 · 일시적 2주택 — 중과 배제, 표준세율' : '2주택 · 비조정지역 — 표준세율(1주택과 동일)';
+      }
     } else if(houses===3){
       if(adj==='Y'){ rate=12; eduRate=0.4; ruleTxt='3주택 · 조정대상지역 — 12% 중과'; }
       else { rate=8; eduRate=0.4; ruleTxt='3주택 · 비조정지역 — 8% 중과'; }
@@ -450,56 +478,60 @@ function calcAcq(){
   }
 
   const acqTax = price*억*rate/100;
+  const firstCut = first ? Math.min(acqTax, 2000000) : 0; // 생애최초 감면 한도 200만원
   const eduTax = price*억*eduRate/100;
   let nongRate = 0;
-  if(over85){
-    nongRate = rate>=12 ? 1.0 : rate>=8 ? 0.6 : 0.2;
-  }
+  if(over85){ nongRate = rate>=12 ? 1.0 : rate>=8 ? 0.6 : 0.2; }
   const nongTax = price*억*nongRate/100;
-  const total = acqTax+eduTax+nongTax;
+  const total = acqTax - firstCut + eduTax + nongTax;
+  const pct = v => v.toFixed(2).replace(/\.?0+$/,'');
 
   $('aq_result').innerHTML =
     row('적용 규정', ruleTxt) +
-    row(`취득세 (${rate.toFixed(2).replace(/\.?0+$/,'')}%)`, acqTax) +
-    row(`지방교육세 (${eduRate.toFixed(2).replace(/\.?0+$/,'')}%)`, eduTax) +
-    row(`농어촌특별세 (${nongRate.toFixed(2).replace(/\.?0+$/,'')}%${over85?'':' · 85㎡이하 비과세'})`, nongTax) +
+    row(`취득세 (${pct(rate)}%)`, acqTax) +
+    (firstCut>0 ? row('생애최초 감면 (−) <span class="green">최대 200만원</span>', -firstCut, 'sub') : '') +
+    row(`지방교육세 (${pct(eduRate)}%${eduNote})`, eduTax) +
+    row(`농어촌특별세 (${pct(nongRate)}%${over85?'':' · 85㎡이하 비과세'})`, nongTax) +
     row('총 납부세액', total, 'sum');
 }
 ['aq_price'].forEach(id=>{ $(id).addEventListener('input',calcAcq); });
 $('aq_houses').addEventListener('change',calcAcq);
 $('aq_type').addEventListener('change',calcAcq);
 $('aq_family').addEventListener('change',calcAcq);
+['aq_first','aq_temp2','aq_inheritOne'].forEach(id=>$(id).addEventListener('change',calcAcq));
 bindSeg('aq_seg_adj',calcAcq); bindSeg('aq_seg_corp',calcAcq); bindSeg('aq_seg_area',calcAcq);
 
 /* ══════════════════ 재산세 ══════════════════ */
+// 재산세 세율표 (과세표준 원단위) — special=1세대1주택 특례세율(공시 9억 이하)
+function propTaxRate(base, special){
+  const b=[6000*10000, 1.5*억, 3*억];
+  if(special){
+    if(base<=b[0]) return base*0.0005;
+    if(base<=b[1]) return base*0.0010 - 30000;
+    if(base<=b[2]) return base*0.0020 - 180000;
+    return base*0.0035 - 630000;
+  }
+  if(base<=b[0]) return base*0.0010;
+  if(base<=b[1]) return base*0.0015 - 30000;
+  if(base<=b[2]) return base*0.0025 - 180000;
+  return base*0.0040 - 630000;
+}
+// 공정시장가액비율: 1세대1주택 43~45%(공시가격 구간별), 그 외 60%
+function propFmv(priceEok, isOne){
+  if(!isOne) return 0.60;
+  return priceEok<=3 ? 0.43 : priceEok<=6 ? 0.44 : 0.45;
+}
+
 function calcProp(){
   const price = num('pt_price'); // 억
   const isOne = segVal('pt_seg_one')==='Y';
   const prevTax = num('pt_prevTax')*10000; // 원
 
-  let fmv;
-  if(isOne && price<=9){ fmv = price<=3?0.43: price<=6?0.44:0.45; }
-  else fmv = 0.60;
+  const fmv = propFmv(price, isOne);
+  const special = isOne && price<=9;   // 특례세율은 공시가격 9억원 이하 1세대1주택만
+  const base = price*억*fmv;           // 과세표준(원)
 
-  const base = price*억*fmv; // 과세표준(원)
-
-  // 세율표 [상한(과세표준기준,원), 세율, 누진공제(원)]
-  function propTax(base, special){
-    // 구간: 6천/1.5억/3억 (과세표준 기준, 원단위)
-    const b=[6000*10000, 1.5*억, 3*억];
-    if(special){
-      if(base<=b[0]) return base*0.0005;
-      if(base<=b[1]) return base*0.0010 - 30000;
-      if(base<=b[2]) return base*0.0020 - 180000;
-      return base*0.0035 - 630000;
-    } else {
-      if(base<=b[0]) return base*0.0010;
-      if(base<=b[1]) return base*0.0015 - 30000;
-      if(base<=b[2]) return base*0.0025 - 180000;
-      return base*0.0040 - 630000;
-    }
-  }
-  let jaesan = Math.max(0, propTax(base, isOne));
+  let jaesan = Math.max(0, propTaxRate(base, special));
   const gross = jaesan;
 
   // 세부담상한
@@ -517,14 +549,15 @@ function calcProp(){
 
   $('pt_result').innerHTML =
     row('공시가격', wonB(price)) +
-    row(`공정시장가액비율 (×${(fmv*100).toFixed(0)}%)`, '') +
+    row(`공정시장가액비율 (×${(fmv*100).toFixed(0)}%${isOne?' · 1세대1주택 특례비율':''})`, '') +
     row('과세표준', base) +
-    row(`산출세액(누진, ${isOne?'1주택특례':'일반'}세율)`, gross, 'sub') +
+    row(`산출세액(누진, ${special?'1주택 특례세율 0.05~0.35%':'표준세율 0.1~0.4%'})`, gross, 'sub') +
     row(capNote, jaesan, 'sub') +
     row('재산세 본세', jaesan) +
     row('지방교육세 (본세×20%)', eduTax) +
     row('도시지역분 (과표×0.14%)', urbanTax) +
-    row('총 납부세액', total, 'sum');
+    row('총 납부세액', total, 'sum') +
+    (isOne && price>9 ? '<tr class="sub"><td colspan="2" style="text-align:left;color:var(--tax-red)">※ 공시가격 9억원 초과로 특례세율(0.05~0.35%)은 적용되지 않고 표준세율이 적용됩니다. 공정시장가액비율 45%는 그대로 적용.</td></tr>' : '');
 }
 $('pt_price').addEventListener('input',calcProp);
 $('pt_prevTax').addEventListener('input',calcProp);
@@ -560,30 +593,48 @@ function jbProgressive(base,table){
   for(const [cap,rate] of table){ if(base<=prev) break; const span=Math.min(base,cap)-prev; tax+=span*억*rate/100; prev=cap; }
   return tax;
 }
-function jbCredit(year,gross){
-  if(JB.houses!==1||JB.resid!=='Y') return {credit:0,label:'해당 없음(1주택 거주자 한정)'};
+function jbCredit(year,base){
+  // 현행(2026)은 1세대1주택자면 거주요건 없음 / 2027년~ 개편안은 거주 1주택 기준으로 가정
+  const eligible = JB.houses===1 && (year===2026 || JB.resid==='Y');
+  if(!eligible) return {credit:0, label: JB.houses===1 ? '해당 없음(2027년~ 거주 1주택 한정)' : '해당 없음(1세대1주택 한정)'};
   const age=+$('jb_age').value, hold=+$('jb_hold').value, live=+$('jb_live').value;
   if(year<=2027){
     let ageR=age>=70?40:age>=65?30:age>=60?20:0;
     let holdR=hold>=15?50:hold>=10?40:hold>=5?20:0;
-    let r=Math.min(ageR+holdR,80); let c=gross*r/100; let capTxt='';
+    let r=Math.min(ageR+holdR,80); let c=base*r/100; let capTxt='';
     if(year===2027){ c=Math.min(c,8000000); capTxt=' (한도 800만원)'; }
     return {credit:c,label:`연령 ${ageR}%+보유 ${holdR}%=${r}%${capTxt}`};
   }
   let holdR=hold>=15?25:hold>=10?20:hold>=5?10:0;
   let liveR=live>=15?50:live>=10?40:live>=5?20:0;
   const pick=liveR>=holdR?{r:liveR,t:'거주'}:{r:holdR,t:'보유'};
-  let c=Math.min(gross*pick.r/100,6000000);
+  let c=Math.min(base*pick.r/100,6000000);
   return {credit:c,label:`${pick.t}공제 ${pick.r}% 선택(한도 600만원)`};
+}
+// 재산세 이중과세 조정 — 종부세 과세표준에 대응하는 재산세 상당액을 산출세액에서 공제
+// 공제액 = 실제 주택분 재산세 × [ 표준세율로 계산한 (종부세 과표×재산세 공정시장가액비율 60%) 재산세 ] ÷ [ 표준세율로 계산한 재산세 ]
+function jbPropDeduct(priceEok, jbBaseEok){
+  if(priceEok<=0 || jbBaseEok<=0) return 0;
+  const isOne = JB.houses===1;
+  const rFmv = propFmv(priceEok, isOne);
+  const rBase = priceEok*억*rFmv;
+  const actual = Math.max(0, propTaxRate(rBase, isOne && priceEok<=9));
+  const std = Math.max(0, propTaxRate(rBase, false));
+  if(std<=0) return 0;
+  const overlap = Math.min(jbBaseEok*억*0.60, rBase);
+  if(overlap<=0) return 0;
+  return actual * Math.max(0, propTaxRate(overlap, false)) / std;
 }
 function jbCalc(year){
   const price=num('jb_price');
   const ded=jbBasicDed(year), f=jbFmv(year);
   const base=Math.max(0,(price-ded))*f;
   const gross=jbProgressive(base,jbRateTable(year));
-  const {credit,label}=jbCredit(year,gross);
-  const jbs=Math.max(0,gross-credit), nong=jbs*0.2;
-  return {price,ded,fmvRate:f,base,gross,credit,creditLabel:label,jbs,nong,total:jbs+nong};
+  const propDed=Math.min(gross, jbPropDeduct(price, base));
+  const afterProp=Math.max(0, gross-propDed);
+  const {credit,label}=jbCredit(year,afterProp);
+  const jbs=Math.max(0,afterProp-credit), nong=jbs*0.2;
+  return {price,ded,fmvRate:f,base,gross,propDed,credit,creditLabel:label,jbs,nong,total:jbs+nong};
 }
 function jbRender(){
   const years=[2026,2027,2028,2029];
@@ -599,14 +650,16 @@ function jbRender(){
     row(`공정시장가액비율 (×${(r.fmvRate*100).toFixed(0)}%)`,'','sub')+
     row('과세표준',wonB(r.base),'sub')+
     row('산출세액(누진)',r.gross)+
-    row(`세액공제 (−) ${r.creditLabel}`,r.credit,'sub')+
+    row('재산세 공제 (−) 이중과세 조정',-r.propDed,'sub')+
+    row(`세액공제 (−) ${r.creditLabel}`,-r.credit,'sub')+
     row('종합부동산세',r.jbs)+
     row('농어촌특별세(20%)',r.nong)+
     row('총 납부세액',r.total,'sum');
   $('jb_fResid').style.display=JB.houses===1?'':'none';
   $('jb_fLocal').style.display=JB.houses===2?'':'none';
   $('jb_fResidVal').style.display=JB.houses>=2?'':'none';
-  const showCredit=JB.houses===1&&JB.resid==='Y';
+  // 2026년(현행)은 거주 여부와 무관하게 1세대1주택 세액공제가 있으므로 1주택이면 항상 노출
+  const showCredit=JB.houses===1;
   ['jb_fAge','jb_fHold','jb_fLive'].forEach(id=>$(id).style.display=showCredit?'':'none');
 }
 function jbSetYear(y){ JB.year=y; jbRender(); }
@@ -623,26 +676,49 @@ function cgProgTax(base){
   const br=[[0.14,.06,0],[0.50,.15,0.0126],[0.88,.24,0.0576],[1.50,.35,0.1544],[3.00,.38,0.1994],[5.00,.40,0.2594],[10.0,.42,0.3594],[Infinity,.45,0.6594]];
   for(const [lim,r,ded] of br){ if(base<=lim) return base*r-ded; }
 }
-function capGainTax(acq,sale,exp,holdY,resY,regime,exemptOK,share){
+// 일반 장기보유특별공제(표1): 3년 이상부터 연 2%, 최대 30%
+function ltGeneral(holdY){ return holdY>=3 ? Math.min(holdY,15)*2/100 : 0; }
+function capGainTax(acq,sale,exp,holdY,resY,regime,share){
   share=share||1; const persons=Math.round(1/share);
   const gainT=sale-acq-exp;
-  if(gainT<=0) return {tax:0,gain:Math.max(gainT,0),taxable:0,ded:0,rate:0,base:0,capped:false};
+  const zero={tax:0,gain:Math.max(gainT,0),taxable:0,ded:0,rate:0,base:0,capped:false,note:''};
+  if(gainT<=0) return {...zero,note:'양도차익 없음'};
   const gain_i=gainT*share;
-  let taxable_i=gain_i;
-  if(exemptOK&&sale>12) taxable_i=gain_i*(sale-12)/sale;
-  else if(exemptOK&&sale<=12) taxable_i=0;
-  let rate=0,cap=Infinity;
-  if(regime==='now'){
-    if(resY>=2) rate=(Math.min(holdY,10)*4+Math.min(resY,10)*4)/100;
-    else { rate=Math.min(Math.max(holdY-2,0)*2,30)/100; if(holdY<3) rate=0; }
-  } else if(regime==='y28'){ rate=(Math.min(resY,10)*6+Math.min(holdY,10)*2)/100; if(rate>0.8) rate=0.8; cap=20; }
+
+  // ① 단기보유 중과 — 비과세·장특공제 배제, 단일세율
+  if(holdY<2){
+    const sRate = holdY<1 ? 0.70 : 0.60;
+    const base_i=Math.max(0,gain_i-0.025);
+    const tax_i=base_i*sRate*1.1;
+    return {tax:tax_i*persons,gain:gainT,taxable:gain_i*persons,ded:0,rate:0,base:base_i,capped:false,
+            note:`보유 ${holdY}년 — 단기보유 ${sRate*100}% 단일세율(1세대1주택 비과세·장특공제 배제)`};
+  }
+
+  // ② 1세대1주택 비과세(보유 2년 + 거주 2년 가정) — 12억 초과분만 안분과세
+  const exemptOK = resY>=2;
+  let taxable_i=gain_i, note='';
+  if(exemptOK){
+    if(sale<=12) return {...zero,gain:gainT,note:'1세대1주택 · 양도가액 12억원 이하 — 전액 비과세'};
+    taxable_i=gain_i*(sale-12)/sale;
+  } else {
+    note='거주 2년 미만 — 비과세 배제, 일반 장기보유공제(연 2%, 최대 30%) 적용';
+  }
+
+  // ③ 장기보유특별공제
+  let rate=0, cap=Infinity;
+  if(!exemptOK){ rate=ltGeneral(holdY); }
+  else if(holdY<3){ rate=0; note='보유 3년 미만 — 장기보유특별공제 없음'; }
+  else if(regime==='now'){ rate=(Math.min(holdY,10)*4+Math.min(resY,10)*4)/100; }
+  else if(regime==='y28'){ rate=Math.min((Math.min(resY,10)*6+Math.min(holdY,10)*2)/100,0.8); cap=20; }
   else { rate=Math.min(resY,10)*8/100; cap=10; }
+
   const cap_i=cap===Infinity?Infinity:cap*share;
   const dedRaw_i=taxable_i*rate;
   const ded_i=Math.min(dedRaw_i,cap_i);
   const base_i=Math.max(0,taxable_i-ded_i-0.025);
   const tax_i=cgProgTax(base_i)*1.1;
-  return {tax:tax_i*persons,gain:gainT,taxable:taxable_i*persons,ded:ded_i*persons,rate,base:base_i,capped:dedRaw_i>cap_i};
+  return {tax:tax_i*persons,gain:gainT,taxable:taxable_i*persons,ded:ded_i*persons,rate,base:base_i,
+          capped:dedRaw_i>cap_i,note};
 }
 const CG_YEARS=[
   {y:'2026',extra:0,regime:'now',rule:'현행·보유4%+거주4%'},
@@ -650,7 +726,7 @@ const CG_YEARS=[
   {y:'2028',extra:2,regime:'y28',rule:'거주6%+보유2%·한도20억'},
   {y:'2029~',extra:3,regime:'y29',rule:'거주8%·한도10억'}
 ];
-let cgSelYear=3;
+let cgSelYear=0;
 function cgRead(){
   return {
     acq:num('cg_acq'), sale:num('cg_sale'), exp:num('cg_exp'),
@@ -662,7 +738,7 @@ function cgRender(){
   const p=cgRead();
   const rs=CG_YEARS.map(Y=>{
     const h=p.hold+Y.extra, r=p.res+Y.extra;
-    const t=capGainTax(p.acq,p.sale,p.exp,h,r,Y.regime,r>=2,p.share);
+    const t=capGainTax(p.acq,p.sale,p.exp,h,r,Y.regime,p.share);
     return {...Y,h,r,t};
   });
   $('cg_yrBtns').innerHTML=rs.map((R,i)=>
@@ -676,6 +752,7 @@ function cgRender(){
     row('과세대상 차익(12억 비과세 안분)',wonB(t.taxable),'sub')+
     row(`장특공제 ${Math.round(t.rate*100)}%${t.capped?' <span class="red">(한도적용)</span>':''}`,wonB(t.ded),'sub')+
     row(`보유 ${R.h}년 / 거주 ${R.r}년 기준`,'','sub')+
+    (t.note?`<tr class="sub"><td colspan="2" style="text-align:left;color:var(--tax-red)">※ ${t.note}</td></tr>`:'')+
     row('양도소득세(지방세포함)',wonB(t.tax),'sum');
 }
 function cgPick(i){ cgSelYear=i; cgRender(); }
@@ -698,25 +775,27 @@ const CORS_PROXIES = [
 function encodeSvcKey(key){
   return /%[0-9A-Fa-f]{2}/.test(key) ? key : encodeURIComponent(key);
 }
+function looksLikePayload(t){
+  const x = (t||'').trim();
+  if(!x) return false;
+  if(x.startsWith('<!DOCTYPE') || x.toLowerCase().startsWith('<html')) return false; // 프록시/차단 페이지
+  return x.startsWith('<') || x.startsWith('{');
+}
 async function tryFetch(url){
   const attempts = [];
   try{
     const res = await fetch(url);
     const text = await res.text();
     // data.go.kr은 인증오류 시에도 200이 아닌 상태코드+본문(XML)을 줄 수 있으므로 status와 무관하게 본문을 신뢰
-    if(text && text.trim().length>0) return {text, via:'direct', status:res.status};
-    attempts.push('direct: 빈 응답 (HTTP '+res.status+')');
+    if(looksLikePayload(text)) return {text, via:'direct', status:res.status};
+    attempts.push('direct: 비정상 응답 (HTTP '+res.status+')');
   }catch(e1){ attempts.push('direct: '+e1.message); }
 
   for(const build of CORS_PROXIES){
     try{
       const res = await fetch(build(url));
       const text = await res.text();
-      const t = text.trim();
-      const looksHtml = t.startsWith('<!DOCTYPE') || t.startsWith('<html');
-      if(!looksHtml && t.length>0 && (t.startsWith('<') || t.startsWith('{'))){
-        return {text, via:'proxy', status:res.status};
-      }
+      if(looksLikePayload(text)) return {text, via:'proxy', status:res.status};
       attempts.push('proxy: HTML/빈 응답 (HTTP '+res.status+')');
     }catch(e2){ attempts.push('proxy: '+e2.message); }
   }
@@ -737,8 +816,10 @@ function parseRTMS(xmlText){
   // 형식 B: 정상 응답 — <response><header><resultCode>…</header><body><items><item>…
   const resultCode = doc.querySelector('resultCode')?.textContent;
   const resultMsg = doc.querySelector('resultMsg')?.textContent;
+  const tcTxt = doc.querySelector('totalCount')?.textContent;
+  const totalCount = tcTxt!=null && tcTxt.trim()!=='' ? (+tcTxt.trim()) : null;
   const items = Array.from(doc.querySelectorAll('item'));
-  return {resultCode, resultMsg, items};
+  return {resultCode, resultMsg, totalCount, items};
 }
 
 // 만원 단위 금액을 "24억 7,000만원" 형태로 명확하게 표기 (오독 방지)
@@ -751,6 +832,82 @@ function fmtManwon(manwon){
   return parts.join(' ');
 }
 
+// HTML 특수문자 이스케이프 (단지명에 따옴표 등이 들어와도 깨지지 않도록)
+function esc(v){
+  return String(v==null?'':v).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+}
+
+// 실거래가 API는 응답 태그명이 영문(신규)/국문(구버전) 두 가지가 혼재하므로 둘 다 인식
+const RTMS_FIELDS = {
+  aptNm:['aptNm','아파트'], umdNm:['umdNm','법정동'], aptDong:['aptDong','아파트동'],
+  area:['excluUseAr','전용면적'], amt:['dealAmount','거래금액'], floor:['floor','층'],
+  y:['dealYear','년'], m:['dealMonth','월'], d:['dealDay','일'], by:['buildYear','건축년도']
+};
+function fieldOf(el, names){
+  for(const n of names){
+    const t = el.getElementsByTagName(n)[0];   // 국문 태그는 querySelector로 못 읽으므로 getElementsByTagName 사용
+    if(t && t.textContent && t.textContent.trim()) return t.textContent.trim();
+  }
+  return '';
+}
+function itemFrom(el){
+  return {
+    aptNm: fieldOf(el,RTMS_FIELDS.aptNm),
+    umdNm: fieldOf(el,RTMS_FIELDS.umdNm),
+    aptDong: fieldOf(el,RTMS_FIELDS.aptDong),
+    area: parseFloat(fieldOf(el,RTMS_FIELDS.area))||0,
+    amt: (+fieldOf(el,RTMS_FIELDS.amt).replace(/[,\s]/g,'')||0), // 단위: 만원
+    floor: fieldOf(el,RTMS_FIELDS.floor),
+    y: fieldOf(el,RTMS_FIELDS.y), m: fieldOf(el,RTMS_FIELDS.m), d: fieldOf(el,RTMS_FIELDS.d),
+    by: fieldOf(el,RTMS_FIELDS.by)
+  };
+}
+// 거래일자 정렬용 숫자키 (문자열 뺄셈에 의존하지 않도록)
+function dealKey(it){ return (+it.y||0)*10000 + (+it.m||0)*100 + (+it.d||0); }
+
+const RTMS_ROWS = 1000, RTMS_MAXPAGE = 5;
+async function fetchMonth(key, lawd, ymd){
+  const rows=[];
+  let page=1, total=null;
+  while(page<=RTMS_MAXPAGE){
+    const url=`https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeSvcKey(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=${RTMS_ROWS}&pageNo=${page}`;
+    const {text} = await tryFetch(url);
+    const parsed = parseRTMS(text);
+    if(!parsed) throw new Error('응답 파싱 실패');
+    if(parsed.authError){ const e=new Error(parsed.message); e.auth=true; throw e; }
+    if(parsed.resultCode && parsed.resultCode!=='000' && parsed.resultCode!=='00'){
+      throw new Error(parsed.resultMsg || ('오류코드 '+parsed.resultCode));
+    }
+    parsed.items.forEach(el=>rows.push(itemFrom(el)));
+    if(total===null) total = (parsed.totalCount!=null) ? parsed.totalCount : rows.length;
+    if(parsed.items.length===0 || rows.length>=total) break;   // 1000건 초과 시 다음 페이지 계속 수집
+    page++;
+  }
+  return rows;
+}
+// 동시 요청 수 제한 실행기 (프록시 부하·차단 방지를 위해 3개씩)
+async function runPool(tasks, limit, onDone){
+  const out=new Array(tasks.length);
+  let next=0, done=0;
+  async function worker(){
+    while(next<tasks.length){
+      const i=next++;
+      try{ out[i]={ok:true, value:await tasks[i]()}; }
+      catch(e){ out[i]={ok:false, error:e}; }
+      done++; if(onDone) onDone(done, tasks.length);
+    }
+  }
+  await Promise.all(Array.from({length:Math.min(limit,tasks.length)}, worker));
+  return out;
+}
+
+const SVCKEY_STORE='ynk_rtms_svckey';
+function clearSvcKey(){
+  try{ localStorage.removeItem(SVCKEY_STORE); }catch(e){}
+  $('svcKey').value='';
+  const okEl=$('apiOk'); okEl.style.display=''; okEl.textContent='저장된 인증키를 삭제했습니다.';
+}
+
 // ── ① 구 데이터 불러오기: 선택기간 동안의 해당 구 전체 거래를 캐시에 적재 ──
 async function loadGuData(){
   const keyRaw=$('svcKey').value.trim();
@@ -758,9 +915,12 @@ async function loadGuData(){
   const months=+$('lookbackMonths').value;
   const errEl=$('apiErr'), okEl=$('apiOk'), resEl=$('apiResult'), sumEl=$('apiSummary');
   errEl.style.display='none'; okEl.style.display='none'; resEl.innerHTML=''; sumEl.innerHTML='';
+  resetSelect('dongSelect','먼저 위에서 불러오기 클릭');
+  resetSelect('aptSelect','동을 먼저 선택하세요');
+  resetSelect('pyeongSelect','단지를 먼저 선택하세요');
   if(!keyRaw){ errEl.style.display=''; errEl.textContent='인증키를 입력해 주세요.'; return; }
   const guLabel = $('lawdCd').selectedOptions[0].textContent;
-  okEl.style.display=''; okEl.textContent = `${guLabel} 최근 ${months}개월 거래 데이터를 불러오는 중…`;
+  okEl.style.display=''; okEl.textContent = `${guLabel} 최근 ${months}개월 거래 데이터를 불러오는 중… (0/${months}개월)`;
 
   const ymList=[];
   const now=new Date();
@@ -769,55 +929,45 @@ async function loadGuData(){
     ymList.push(''+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0'));
   }
 
-  let allItems = [];
-  const errors = [];
-  try{
-    for(const ymd of ymList){
-      const url=`https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeSvcKey(keyRaw)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=1000&pageNo=1`;
-      let text;
-      try{ ({text} = await tryFetch(url)); }
-      catch(e){ errors.push(ymd+': '+e.message); continue; }
-      const parsed = parseRTMS(text);
-      if(!parsed){ errors.push(ymd+': 응답 파싱 실패'); continue; }
-      if(parsed.authError){ throw new Error(parsed.message + ' — data.go.kr에서 인증키·API 활용신청 상태를 확인해 주세요.'); }
-      if(parsed.resultCode && parsed.resultCode!=='000' && parsed.resultCode!=='00'){ errors.push(ymd+': '+(parsed.resultMsg||'오류')); continue; }
-      const g=(el,tag)=>el.querySelector(tag)?.textContent?.trim()||'';
-      parsed.items.forEach(it=>{
-        allItems.push({
-          aptNm: g(it,'aptNm'), umdNm: g(it,'umdNm'), aptDong: g(it,'aptDong'),
-          area: parseFloat(g(it,'excluUseAr'))||0,
-          amt: (+g(it,'dealAmount').replace(/,/g,'')||0), // 단위: 만원
-          floor: g(it,'floor'),
-          y: g(it,'dealYear'), m: g(it,'dealMonth'), d: g(it,'dealDay'),
-          by: g(it,'buildYear')
-        });
-      });
-    }
-  }catch(e){
-    errEl.style.display=''; errEl.textContent='조회 실패: '+e.message;
+  const results = await runPool(
+    ymList.map(ymd => () => fetchMonth(keyRaw, lawd, ymd)),
+    3,
+    (done,total)=>{ okEl.textContent = `${guLabel} 최근 ${months}개월 거래 데이터를 불러오는 중… (${done}/${total}개월)`; }
+  );
+
+  const authFail = results.find(r=>!r.ok && r.error && r.error.auth);
+  if(authFail){
     okEl.style.display='none';
+    errEl.style.display=''; errEl.textContent='조회 실패: '+authFail.error.message+' — data.go.kr에서 인증키·API 활용신청 상태를 확인해 주세요.';
     return;
   }
+
+  let allItems=[]; const failed=[];
+  results.forEach((r,i)=>{ if(r.ok) allItems=allItems.concat(r.value); else failed.push(ymList[i]); });
 
   if(allItems.length===0){
-    errEl.style.display=''; errEl.textContent = `${guLabel}에서 최근 ${months}개월간 거래 데이터를 찾지 못했습니다. 인증키·기간을 확인해 주세요.`;
     okEl.style.display='none';
+    errEl.style.display='';
+    errEl.textContent = failed.length===ymList.length
+      ? `조회에 실패했습니다 (${failed.join(', ')}). 인증키·네트워크(프록시) 상태를 확인해 주세요. 마지막 오류: ${results[0].error?results[0].error.message:''}`
+      : `${guLabel}에서 최근 ${months}개월간 거래 데이터를 찾지 못했습니다. 기간을 늘려 다시 시도해 보세요.`;
     return;
   }
 
+  try{ localStorage.setItem(SVCKEY_STORE, keyRaw); }catch(e){}
+
   window.__guItems = allItems;
-  okEl.textContent = `${guLabel} 최근 ${months}개월 거래 ${allItems.length}건 로딩 완료${errors.length?` (일부 월 실패 ${errors.length}건)`:''} — 이제 동 → 단지 → 평형 순서로 선택하세요.`;
+  okEl.textContent = `${guLabel} 최근 ${months}개월 거래 ${allItems.length.toLocaleString()}건 로딩 완료`
+    + (failed.length?` (조회 실패한 월: ${failed.join(', ')})`:'')
+    + ' — 이제 동 → 단지 → 평형 순서로 선택하세요.';
 
   const dongCounts = {};
   allItems.forEach(it=>{ if(it.umdNm) dongCounts[it.umdNm]=(dongCounts[it.umdNm]||0)+1; });
   const dongList = Object.keys(dongCounts).sort((a,b)=>dongCounts[b]-dongCounts[a]);
   const dongSel = $('dongSelect');
   dongSel.innerHTML = '<option value="">동을 선택하세요</option>' +
-    dongList.map(d=>`<option value="${d}">${d} (${dongCounts[d]}건)</option>`).join('');
+    dongList.map(d=>`<option value="${esc(d)}">${esc(d)} (${dongCounts[d]}건)</option>`).join('');
   dongSel.disabled = false;
-
-  resetSelect('aptSelect','동을 먼저 선택하세요');
-  resetSelect('pyeongSelect','단지를 먼저 선택하세요');
 }
 
 function resetSelect(id, placeholder){
@@ -838,7 +988,7 @@ function onDongChange(){
   const list = Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
   const sel=$('aptSelect');
   sel.innerHTML = '<option value="">단지를 선택하세요</option>' +
-    list.map(a=>`<option value="${a}">${a} (${counts[a]}건)</option>`).join('');
+    list.map(a=>`<option value="${esc(a)}">${esc(a)} (${counts[a]}건)</option>`).join('');
   sel.disabled=false;
 }
 
@@ -873,9 +1023,9 @@ function onPyeongChange(){
   if(!dong || !apt || isNaN(areaKey) || !window.__guItems) return;
   const allItems = window.__guItems.filter(it=>
     it.umdNm===dong && it.aptNm===apt && Math.round(it.area*10)/10===areaKey
-  ).sort((a,b)=> (b.y+b.m.padStart(2,'0')+b.d.padStart(2,'0')) - (a.y+a.m.padStart(2,'0')+a.d.padStart(2,'0')));
+  ).sort((a,b)=> dealKey(b)-dealKey(a));
   if(allItems.length===0) return;
-  renderSummaryAndTable(allItems, `${dong} · ${apt} · ${areaKey}㎡`);
+  renderSummaryAndTable(allItems, `${esc(dong)} · ${esc(apt)} · ${areaKey}㎡`);
 }
 
 function renderSummaryAndTable(allItems, contextLabel){
@@ -934,7 +1084,7 @@ function renderSummaryAndTable(allItems, contextLabel){
   window.__rtmsItems = allItems;
   const rows = allItems.map((it,idx)=>
     `<tr>
-      <td>${it.aptNm}${it.aptDong&&it.aptDong.trim()?' '+it.aptDong+'동':''}</td>
+      <td>${esc(it.aptNm)}${it.aptDong&&it.aptDong.trim()?' '+esc(it.aptDong)+'동':''}</td>
       <td>${it.area}㎡</td><td>${it.floor}층</td><td>${it.by}</td>
       <td>${it.y}.${it.m}.${it.d}</td>
       <td style="text-align:right;font-weight:700">${fmtManwon(it.amt)}</td>
@@ -994,6 +1144,9 @@ function applyDirect(amtManwon, target){
   }
   window.scrollTo({top:0, behavior:'smooth'});
 }
+
+// 저장된 인증키 복원
+try{ const savedKey=localStorage.getItem(SVCKEY_STORE); if(savedKey) $('svcKey').value=savedKey; }catch(e){}
 
 // 초기 렌더
 calcAcq(); calcProp(); jbRender(); cgRender();
