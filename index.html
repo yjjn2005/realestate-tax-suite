@@ -143,8 +143,9 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
         <div class="hint">서울 외 지역은 아래에 5자리 코드를 직접 입력하세요</div>
       </div>
       <div class="field">
-        <label>법정동코드 직접입력(선택)</label>
-        <input type="text" id="lawdCdManual" placeholder="예: 41135 (수원 영통구 등)">
+        <label>법정동코드 직접입력(선택, 숫자 5자리만)</label>
+        <input type="text" id="lawdCdManual" placeholder="예: 41135 (경기 등 목록에 없는 지역만)">
+        <div class="hint">동 이름이 아니라 숫자 코드입니다. 서울은 위 드롭다운만 쓰면 되니 비워두세요.</div>
       </div>
       <div class="field">
         <label>단지명 검색어</label>
@@ -764,7 +765,12 @@ function fmtManwon(manwon){
 
 async function fetchRTMS(){
   const keyRaw=$('svcKey').value.trim();
-  const lawd=($('lawdCdManual').value.trim() || $('lawdCd').value.trim());
+  const manualCode = $('lawdCdManual').value.trim();
+  const lawd = /^\d{5}$/.test(manualCode) ? manualCode : $('lawdCd').value.trim();
+  let manualIgnoredNote = '';
+  if(manualCode && !/^\d{5}$/.test(manualCode)){
+    manualIgnoredNote = `"법정동코드 직접입력"에 숫자 5자리가 아닌 값("${manualCode}")이 있어 무시하고 "구/시군구 선택" 값으로 진행합니다. `;
+  }
   const query=$('aptQuery').value.trim();
   const dongFilter=$('aptDongFilter').value.trim();
   const areaFilter = $('aptAreaFilter').value.trim() ? parseFloat($('aptAreaFilter').value) : null;
@@ -835,7 +841,7 @@ async function fetchRTMS(){
   allItems.sort((a,b)=> (b.y+b.m.padStart(2,'0')+b.d.padStart(2,'0')) - (a.y+a.m.padStart(2,'0')+a.d.padStart(2,'0')));
 
   okEl.style.display='';
-  okEl.textContent = `"${query}" 검색 결과 ${allItems.length}건 (최근 ${months}개월). 조건에 맞는 도출가격은 아래 요약을 참고하고, 실제 매물과 가장 가까운 건을 골라 반영 버튼을 누르세요.`;
+  okEl.textContent = manualIgnoredNote + `"${query}" 검색 결과 ${allItems.length}건 (최근 ${months}개월). 조건에 맞는 도출가격은 아래 요약을 참고하고, 실제 매물과 가장 가까운 건을 골라 반영 버튼을 누르세요.`;
 
   // ── 도출가격 요약 박스 ──
   const amts = allItems.map(x=>x.amt);
