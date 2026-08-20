@@ -128,22 +128,50 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
         <div class="hint">"활용신청" 승인이 완료된 키여야 조회됩니다 (신청 직후엔 승인까지 1~2시간 걸릴 수 있음)</div>
       </div>
       <div class="field">
-        <label>법정동코드 (5자리)</label>
-        <input type="text" id="lawdCd" placeholder="예: 11680">
+        <label>구/시군구 선택</label>
+        <select id="lawdCd">
+          <option value="11110">종로구</option><option value="11140">중구</option><option value="11170">용산구</option>
+          <option value="11200">성동구</option><option value="11215">광진구</option><option value="11230">동대문구</option>
+          <option value="11260">중랑구</option><option value="11290">성북구</option><option value="11305">강북구</option>
+          <option value="11320">도봉구</option><option value="11350">노원구</option><option value="11380">은평구</option>
+          <option value="11410">서대문구</option><option value="11440">마포구</option><option value="11470">양천구</option>
+          <option value="11500">강서구</option><option value="11530">구로구</option><option value="11545">금천구</option>
+          <option value="11560">영등포구</option><option value="11590">동작구</option><option value="11620">관악구</option>
+          <option value="11650">서초구</option><option value="11680" selected>강남구</option><option value="11710">송파구</option>
+          <option value="11740">강동구</option>
+        </select>
+        <div class="hint">서울 외 지역은 아래에 5자리 코드를 직접 입력하세요</div>
       </div>
       <div class="field">
-        <label>계약년월 (YYYYMM)</label>
-        <input type="text" id="dealYmd" placeholder="예: 202607">
+        <label>법정동코드 직접입력(선택)</label>
+        <input type="text" id="lawdCdManual" placeholder="예: 41135 (수원 영통구 등)">
+      </div>
+      <div class="field">
+        <label>단지명 검색어</label>
+        <input type="text" id="aptQuery" placeholder="예: 래미안강남힐즈">
+      </div>
+      <div class="field">
+        <label>건물 동(선택, 필터용)</label>
+        <input type="text" id="aptDongFilter" placeholder="예: 602">
+      </div>
+      <div class="field">
+        <label>조회 기간</label>
+        <select id="lookbackMonths">
+          <option value="1">최근 1개월</option>
+          <option value="3" selected>최근 3개월</option>
+          <option value="6">최근 6개월</option>
+          <option value="12">최근 12개월</option>
+        </select>
       </div>
       <div class="field" style="display:flex;align-items:flex-end">
-        <button class="apibtn" onclick="fetchRTMS()">실거래가 조회</button>
+        <button class="apibtn" onclick="fetchRTMS()">단지 실거래가 검색</button>
       </div>
     </div>
     <div class="err" id="apiErr"></div>
     <div class="ok" id="apiOk"></div>
     <div id="apiResult" style="margin-top:8px"></div>
     <div class="warn">
-      ✅ 유앤김 패밀리 전용 Cloudflare Worker 프록시를 최우선으로 사용하며, 문제가 있을 때만 공개 프록시(corsproxy.io → allorigins.win → codetabs.com) 순으로 자동 폴백합니다. 공시가격은 data.go.kr에 일반공개 API가 없어 자동조회가 불가하며, 부동산공시가격알리미에서 직접 확인해 입력해야 합니다.
+      ✅ 유앤김 패밀리 전용 Cloudflare Worker 프록시를 최우선으로 사용하며, 문제가 있을 때만 공개 프록시(corsproxy.io → allorigins.win → codetabs.com) 순으로 자동 폴백합니다. 실거래가 API는 <b>동(棟)까지만</b> 제공하고 호수는 개인정보라 제공하지 않으므로, 검색 결과에서 층·면적·동이 실제 매물과 가장 가까운 건을 골라 "반영" 버튼을 눌러주세요. 공시가격은 별도 공개 API가 없어 부동산공시가격알리미에서 직접 확인해 입력해야 합니다.
     </div>
   </div>
 </section>
@@ -712,44 +740,104 @@ function parseRTMS(xmlText){
 }
 
 async function fetchRTMS(){
-  const keyRaw=$('svcKey').value.trim(), lawd=$('lawdCd').value.trim(), ymd=$('dealYmd').value.trim();
+  const keyRaw=$('svcKey').value.trim();
+  const lawd=($('lawdCdManual').value.trim() || $('lawdCd').value.trim());
+  const query=$('aptQuery').value.trim();
+  const dongFilter=$('aptDongFilter').value.trim();
+  const months=+$('lookbackMonths').value;
   const errEl=$('apiErr'), okEl=$('apiOk'), resEl=$('apiResult');
   errEl.style.display='none'; okEl.style.display='none'; resEl.innerHTML='';
-  if(!keyRaw||!lawd||!ymd){ errEl.style.display=''; errEl.textContent='인증키·법정동코드·계약년월을 모두 입력해 주세요.'; return; }
+  if(!keyRaw||!lawd){ errEl.style.display=''; errEl.textContent='인증키와 구/시군구를 확인해 주세요.'; return; }
   if(!/^\d{5}$/.test(lawd)){ errEl.style.display=''; errEl.textContent='법정동코드는 숫자 5자리여야 합니다 (예: 11680).'; return; }
-  if(!/^\d{6}$/.test(ymd)){ errEl.style.display=''; errEl.textContent='계약년월은 YYYYMM 형식 숫자 6자리여야 합니다 (예: 202607).'; return; }
-  resEl.innerHTML = '<div style="font-size:12px;color:var(--ink-soft)">조회 중…</div>';
-  const url=`https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeSvcKey(keyRaw)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=30&pageNo=1`;
-  try{
-    const {text, via} = await tryFetch(url);
-    const parsed = parseRTMS(text);
-    if(!parsed){
-      throw new Error('응답을 해석할 수 없습니다 (XML 파싱 실패). 인증키에 특수문자가 잘못 들어갔는지 확인해 주세요.');
-    }
-    if(parsed.authError){
-      throw new Error(parsed.message + ' — data.go.kr 마이페이지에서 "국토교통부_아파트 매매 실거래가 상세 자료" API에 활용신청이 승인되어 있는지, 그리고 Decoding 방식 인증키를 넣었는지 확인해 주세요.');
-    }
-    if(parsed.resultCode && parsed.resultCode!=='000' && parsed.resultCode!=='00'){
-      throw new Error((parsed.resultMsg || '알 수 없는 오류') + ` (resultCode ${parsed.resultCode})`);
-    }
-    if(parsed.items.length===0){
-      okEl.style.display=''; okEl.textContent=`조회 성공(${via==='proxy'?'프록시 경유':'직접호출'}) — 해당 조건의 거래 내역이 없습니다. 계약년월을 바꿔 다시 시도해 보세요.`;
-      resEl.innerHTML=''; return;
-    }
-    okEl.style.display='';
-    okEl.textContent = `조회 성공(${via==='proxy'?'프록시 경유':'직접호출'}) — ${parsed.items.length}건. 아래 표에서 실거래가를 확인해 취득세·재산세 탭에 직접 입력하세요.`;
-    const g=(el,tag)=>el.querySelector(tag)?.textContent?.trim()||'';
-    const rows = parsed.items.map(it=>{
-      const apt=g(it,'aptNm'), area=g(it,'excluUseAr'), amt=g(it,'dealAmount').replace(/,/g,'').trim(),
-            floor=g(it,'floor'), y=g(it,'dealYear'), m=g(it,'dealMonth'), d=g(it,'dealDay'), by=g(it,'buildYear');
-      return `<tr><td>${apt}</td><td>${area}㎡</td><td>${floor}층</td><td>${by}</td><td>${y}.${m}.${d}</td><td style="text-align:right;font-weight:700">${(+amt||0).toLocaleString()}만원</td></tr>`;
-    }).join('');
-    resEl.innerHTML = `<div style="overflow-x:auto"><table class="ref"><tr><th>단지명</th><th>전용면적</th><th>층</th><th>건축년도</th><th>계약일</th><th>거래금액</th></tr>${rows}</table></div>
-      <div class="hint" style="margin-top:6px">※ 공시가격은 data.go.kr에 일반공개 REST API가 없어 자동조회를 지원하지 않습니다 — <a href="https://www.realtyprice.kr" target="_blank" rel="noopener">부동산공시가격알리미</a>에서 직접 확인해 재산세·종부세 탭에 입력해 주세요.</div>`;
-  }catch(e){
-    errEl.style.display='';
-    errEl.textContent='조회 실패: '+e.message;
+  if(!query){ errEl.style.display=''; errEl.textContent='검색할 단지명을 입력해 주세요 (예: 래미안강남힐즈).'; return; }
+  resEl.innerHTML = '<div style="font-size:12px;color:var(--ink-soft)">조회 중… (최근 '+months+'개월)</div>';
+
+  // 조회할 계약년월(YYYYMM) 목록 생성
+  const ymList=[];
+  const now=new Date();
+  for(let i=0;i<months;i++){
+    const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
+    ymList.push(''+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0'));
   }
+
+  const normalize = s => (s||'').replace(/\s/g,'').toLowerCase();
+  const qn = normalize(query);
+  let allItems = [];
+  const errors = [];
+  try{
+    for(const ymd of ymList){
+      const url=`https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeSvcKey(keyRaw)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=1000&pageNo=1`;
+      let text, via;
+      try{
+        ({text, via} = await tryFetch(url));
+      }catch(e){ errors.push(ymd+': '+e.message); continue; }
+      const parsed = parseRTMS(text);
+      if(!parsed){ errors.push(ymd+': 응답 파싱 실패'); continue; }
+      if(parsed.authError){ throw new Error(parsed.message + ' — data.go.kr에서 인증키·API 활용신청 상태를 확인해 주세요.'); }
+      if(parsed.resultCode && parsed.resultCode!=='000' && parsed.resultCode!=='00'){ errors.push(ymd+': '+(parsed.resultMsg||'오류')); continue; }
+      const g=(el,tag)=>el.querySelector(tag)?.textContent?.trim()||'';
+      parsed.items.forEach(it=>{
+        const aptNm=g(it,'aptNm');
+        if(!normalize(aptNm).includes(qn)) return;
+        const aptDong=g(it,'aptDong');
+        if(dongFilter && aptDong && normalize(aptDong)!==normalize(dongFilter)) return;
+        allItems.push({
+          aptNm, aptDong,
+          area: g(it,'excluUseAr'),
+          amt: (+g(it,'dealAmount').replace(/,/g,'')||0),
+          floor: g(it,'floor'),
+          y: g(it,'dealYear'), m: g(it,'dealMonth'), d: g(it,'dealDay'),
+          by: g(it,'buildYear')
+        });
+      });
+    }
+  }catch(e){
+    errEl.style.display=''; errEl.textContent='조회 실패: '+e.message;
+    resEl.innerHTML=''; return;
+  }
+
+  if(allItems.length===0){
+    okEl.style.display='';
+    okEl.textContent = `검색 완료 — "${query}" 조건에 맞는 거래가 최근 ${months}개월 내 없습니다.`;
+    if(errors.length) okEl.textContent += ` (일부 월 조회 실패: ${errors.length}건)`;
+    resEl.innerHTML=''; return;
+  }
+  allItems.sort((a,b)=> (b.y+b.m.padStart(2,'0')+b.d.padStart(2,'0')) - (a.y+a.m.padStart(2,'0')+a.d.padStart(2,'0')));
+
+  okEl.style.display='';
+  okEl.textContent = `"${query}" 검색 결과 ${allItems.length}건 (최근 ${months}개월). 아래에서 실제 매물과 가장 가까운 건을 골라 반영 버튼을 누르세요.`;
+
+  window.__rtmsItems = allItems;
+  const rows = allItems.map((it,idx)=>
+    `<tr>
+      <td>${it.aptNm}${it.aptDong&&it.aptDong.trim()?' '+it.aptDong+'동':''}</td>
+      <td>${it.area}㎡</td><td>${it.floor}층</td><td>${it.by}</td>
+      <td>${it.y}.${it.m}.${it.d}</td>
+      <td style="text-align:right;font-weight:700">${it.amt.toLocaleString()}만원</td>
+      <td style="white-space:nowrap">
+        <button class="apibtn" style="padding:5px 8px;font-size:11px" onclick="applyRTMS(${idx},'acq')">취득세 반영</button>
+        <button class="apibtn" style="padding:5px 8px;font-size:11px;margin-left:4px" onclick="applyRTMS(${idx},'sale')">양도가 반영</button>
+      </td>
+    </tr>`
+  ).join('');
+  resEl.innerHTML = `<div style="overflow-x:auto"><table class="ref"><tr><th>단지/동</th><th>전용면적</th><th>층</th><th>건축년도</th><th>계약일</th><th>거래금액</th><th>반영</th></tr>${rows}</table></div>
+    <div class="hint" style="margin-top:6px">※ 공시가격은 별도 공개 API가 없어 자동조회를 지원하지 않습니다 — <a href="https://www.realtyprice.kr" target="_blank" rel="noopener">부동산공시가격알리미</a>에서 직접 확인해 재산세·종부세 탭에 입력해 주세요.</div>`;
+}
+
+function applyRTMS(idx, target){
+  const it = window.__rtmsItems && window.__rtmsItems[idx];
+  if(!it) return;
+  const eok = it.amt/10000; // 만원 → 억원
+  if(target==='acq'){
+    $('aq_price').value = eok;
+    calcAcq();
+    showMain(0);
+  } else if(target==='sale'){
+    $('cg_sale').value = eok;
+    cgRender();
+    showMain(3);
+  }
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 
 // 초기 렌더
