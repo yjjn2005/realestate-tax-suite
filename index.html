@@ -114,10 +114,21 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 
 <div class="wrap">
 
+<div class="maintabs">
+  <button class="mtab on" onclick="showMain(0)">🏢 매매 실거래가</button>
+  <button class="mtab" onclick="showMain(1)">🔑 전월세 실거래가</button>
+  <button class="mtab" onclick="showMain(2)">🏠 취득세</button>
+  <button class="mtab" onclick="showMain(3)">📋 재산세</button>
+  <button class="mtab" onclick="showMain(4)">🏛️ 종부세</button>
+  <button class="mtab" onclick="showMain(5)">📤 양도세</button>
+</div>
+
+<!-- ══════════ 매매 실거래가 검색 ══════════ -->
+<div class="mpanel on" id="mpSale">
 <section>
   <div class="sec-label">
-    <span class="tag">1단계</span>
-    <h2>아파트 단지 검색</h2>
+    <span class="tag">매매</span>
+    <h2>아파트 매매 실거래가</h2>
     <small>구 → 동 → 단지 → 평형 순서로 선택만 하면 됩니다</small>
   </div>
   <div class="card">
@@ -191,12 +202,77 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 </section>
 
 
-<div class="maintabs">
-  <button class="mtab on" onclick="showMain(0)">🏠 취득세</button>
-  <button class="mtab" onclick="showMain(1)">📋 재산세</button>
-  <button class="mtab" onclick="showMain(2)">🏛️ 종부세</button>
-  <button class="mtab" onclick="showMain(3)">📤 양도세</button>
-</div>
+</div><!-- /mpSale -->
+
+<!-- ══════════ 전월세 실거래가 검색 ══════════ -->
+<div class="mpanel" id="mpRent">
+<section>
+  <div class="sec-label">
+    <span class="tag">전월세</span>
+    <h2>아파트 전월세 실거래가</h2>
+    <small>구 → 동 → 단지 → 평형 순서로 선택만 하면 됩니다</small>
+  </div>
+  <div class="card">
+    <div class="grid">
+      <div class="field">
+        <label>① 구 선택</label>
+        <select id="rtLawdCd">
+          <option value="11110">종로구</option><option value="11140">중구</option><option value="11170">용산구</option>
+          <option value="11200">성동구</option><option value="11215">광진구</option><option value="11230">동대문구</option>
+          <option value="11260">중랑구</option><option value="11290">성북구</option><option value="11305">강북구</option>
+          <option value="11320">도봉구</option><option value="11350">노원구</option><option value="11380">은평구</option>
+          <option value="11410">서대문구</option><option value="11440">마포구</option><option value="11470">양천구</option>
+          <option value="11500">강서구</option><option value="11530">구로구</option><option value="11545">금천구</option>
+          <option value="11560">영등포구</option><option value="11590">동작구</option><option value="11620">관악구</option>
+          <option value="11650">서초구</option><option value="11680" selected>강남구</option><option value="11710">송파구</option>
+          <option value="11740">강동구</option>
+        </select>
+      </div>
+      <div class="field">
+        <label>조회 기간(단지 목록 범위)</label>
+        <select id="rtLookback">
+          <option value="3">최근 3개월</option>
+          <option value="6" selected>최근 6개월</option>
+          <option value="12">최근 12개월</option>
+        </select>
+      </div>
+      <div class="field" style="display:flex;align-items:flex-end">
+        <button class="apibtn" onclick="loadRentData()">이 구의 전월세 목록 불러오기</button>
+      </div>
+    </div>
+    <div class="grid" style="margin-top:12px">
+      <div class="field">
+        <label>② 동(洞) 선택</label>
+        <select id="rtDong" disabled><option value="">먼저 위에서 불러오기 클릭</option></select>
+      </div>
+      <div class="field">
+        <label>③ 단지 선택</label>
+        <select id="rtApt" disabled><option value="">동을 먼저 선택하세요</option></select>
+      </div>
+      <div class="field">
+        <label>④ 평형 선택</label>
+        <select id="rtPyeong" disabled><option value="">단지를 먼저 선택하세요</option></select>
+      </div>
+      <div class="field" style="grid-column:1/-1">
+        <label>거래 유형</label>
+        <div class="seg" id="rt_seg_type">
+          <button data-v="all" class="on">전체</button>
+          <button data-v="jeonse">전세만(월세 0)</button>
+          <button data-v="wolse">월세만</button>
+        </div>
+      </div>
+    </div>
+    <div class="err" id="rtErr"></div>
+    <div class="ok" id="rtOk"></div>
+    <div id="rtSummary" style="margin-top:10px"></div>
+    <div id="rtResult" style="margin-top:8px"></div>
+    <div class="warn">
+      전월세 실거래가는 국토교통부 <b>아파트 전월세 실거래가 자료</b>를 사용합니다. 보증금·월세는 <b>만원 단위</b>이며, 월세가 0이면 순수 전세입니다.
+      매매 탭에서 같은 단지·평형을 먼저 조회해 두면 <b>전세가율(전세보증금÷매매가)</b>도 함께 계산해 드립니다.
+    </div>
+  </div>
+</section>
+</div><!-- /mpRent -->
 
 <!-- ══════════ 취득세 ══════════ -->
 <div class="mpanel on" id="mp0">
@@ -430,10 +506,11 @@ function bindSeg(id,cb){
 }
 function segVal(id){ const b=document.querySelector('#'+id+' button.on'); return b?b.dataset.v:null; }
 
-// ── 메인 탭 전환 ──
+// ── 메인 탭 전환 (0:매매검색 1:전월세검색 2:취득세 3:재산세 4:종부세 5:양도세) ──
+const PANELS = ['mpSale','mpRent','mp0','mp1','mp2','mp3'];
 function showMain(n){
-  [0,1,2,3].forEach(i=>{
-    $('mp'+i).classList.toggle('on', i===n);
+  PANELS.forEach((id,i)=>{
+    $(id).classList.toggle('on', i===n);
     document.querySelectorAll('.mtab')[i].classList.toggle('on', i===n);
   });
 }
@@ -855,8 +932,12 @@ function esc(v){
 const RTMS_FIELDS = {
   aptNm:['aptNm','아파트'], umdNm:['umdNm','법정동'], aptDong:['aptDong','아파트동'],
   area:['excluUseAr','전용면적'], amt:['dealAmount','거래금액'], floor:['floor','층'],
-  y:['dealYear','년'], m:['dealMonth','월'], d:['dealDay','일'], by:['buildYear','건축년도']
+  y:['dealYear','년'], m:['dealMonth','월'], d:['dealDay','일'], by:['buildYear','건축년도'],
+  deposit:['deposit','보증금액'], rent:['monthlyRent','월세금액'],
+  ctType:['contractType','계약구분'], ctTerm:['contractTerm','계약기간']
 };
+// 전월세 실거래가 API (매매와 별도 활용신청 필요)
+const RENT_ENDPOINT = 'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent';
 function fieldOf(el, names){
   for(const n of names){
     const t = el.getElementsByTagName(n)[0];   // 국문 태그는 querySelector로 못 읽으므로 getElementsByTagName 사용
@@ -876,6 +957,22 @@ function itemFrom(el){
     by: fieldOf(el,RTMS_FIELDS.by)
   };
 }
+// 전월세 항목 — 보증금·월세는 만원 단위
+function itemFromRent(el){
+  const n = v => (+String(v||'').replace(/[,\s]/g,'') || 0);
+  return {
+    aptNm: fieldOf(el,RTMS_FIELDS.aptNm),
+    umdNm: fieldOf(el,RTMS_FIELDS.umdNm),
+    area: parseFloat(fieldOf(el,RTMS_FIELDS.area))||0,
+    deposit: n(fieldOf(el,RTMS_FIELDS.deposit)),
+    rent: n(fieldOf(el,RTMS_FIELDS.rent)),
+    floor: fieldOf(el,RTMS_FIELDS.floor),
+    y: fieldOf(el,RTMS_FIELDS.y), m: fieldOf(el,RTMS_FIELDS.m), d: fieldOf(el,RTMS_FIELDS.d),
+    by: fieldOf(el,RTMS_FIELDS.by),
+    ctType: fieldOf(el,RTMS_FIELDS.ctType), ctTerm: fieldOf(el,RTMS_FIELDS.ctTerm)
+  };
+}
+
 // 거래일자 정렬용 숫자키 (문자열 뺄셈에 의존하지 않도록)
 function dealKey(it){ return (+it.y||0)*10000 + (+it.m||0)*100 + (+it.d||0); }
 
@@ -890,9 +987,10 @@ function rtmsUrl(ep, key, lawd, ymd, rows, page){
   return `${RTMS_ENDPOINTS[ep].url}?serviceKey=${encodeSvcKey(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=${rows}&pageNo=${page}`;
 }
 // KEYLESS 모드에서는 전용 서버가 인증키를 붙여 대신 호출해 준다 (프록시 폴백 불필요)
-async function rtmsFetch(ep, key, lawd, ymd, rows, page){
+async function rtmsFetch(ep, key, lawd, ymd, rows, page, type){
+  type = type||'sale';
   if(KEYLESS){
-    const res = await fetch(`${WORKER_BASE}/rtms?LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=${rows}&pageNo=${page}`);
+    const res = await fetch(`${WORKER_BASE}/rtms?LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=${rows}&pageNo=${page}&type=${type}`);
     const text = await res.text();
     if(!looksLikePayload(text)) throw new Error('전용 서버 응답 오류 (HTTP '+res.status+')');
     if(text.trim().startsWith('{')){
@@ -901,6 +999,9 @@ async function rtmsFetch(ep, key, lawd, ymd, rows, page){
       const err=new Error(msg); err.worker=true; throw err;
     }
     return {text, via:'worker', status:res.status};
+  }
+  if(type==='rent'){
+    return tryFetch(`${RENT_ENDPOINT}?serviceKey=${encodeSvcKey(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=${rows}&pageNo=${page}`);
   }
   return tryFetch(rtmsUrl(ep, key, lawd, ymd, rows, page));
 }
@@ -941,19 +1042,21 @@ function explainApiError(msg){
     return '해당 API 서비스를 찾을 수 없습니다(엔드포인트 변경 가능성).';
   return '';
 }
-async function fetchMonth(key, lawd, ymd, ep){
+async function fetchMonth(key, lawd, ymd, ep, type){
   if(ep==null) ep=RTMS_EP;
+  type = type||'sale';
+  const mapItem = type==='rent' ? itemFromRent : itemFrom;
   const rows=[];
   let page=1, total=null;
   while(page<=RTMS_MAXPAGE){
-    const {text} = await rtmsFetch(ep, key, lawd, ymd, RTMS_ROWS, page);
+    const {text} = await rtmsFetch(ep, key, lawd, ymd, RTMS_ROWS, page, type);
     const parsed = parseRTMS(text);
     if(!parsed) throw new Error('응답 파싱 실패');
     if(parsed.authError){ const e=new Error(parsed.message); e.auth=true; throw e; }
     if(parsed.resultCode && parsed.resultCode!=='000' && parsed.resultCode!=='00'){
       throw new Error(parsed.resultMsg || ('오류코드 '+parsed.resultCode));
     }
-    parsed.items.forEach(el=>rows.push(itemFrom(el)));
+    parsed.items.forEach(el=>rows.push(mapItem(el)));
     if(total===null) total = (parsed.totalCount!=null) ? parsed.totalCount : rows.length;
     if(parsed.items.length===0 || rows.length>=total) break;   // 1000건 초과 시 다음 페이지 계속 수집
     page++;
@@ -1280,11 +1383,11 @@ function applyGosiga(baseAmt, target){
   if(target==='pt'){
     $('pt_price').value = eok;
     calcProp();
-    showMain(1);
+    showMain(3);
   } else if(target==='jb'){
     $('jb_price').value = eok;
     jbRender();
-    showMain(2);
+    showMain(4);
   }
   window.scrollTo({top:0, behavior:'smooth'});
 }
@@ -1299,14 +1402,195 @@ function applyDirect(amtManwon, target){
   if(target==='acq'){
     $('aq_price').value = eok;
     calcAcq();
-    showMain(0);
+    showMain(2);
   } else if(target==='sale'){
     $('cg_sale').value = eok;
     cgRender();
-    showMain(3);
+    showMain(5);
   }
   window.scrollTo({top:0, behavior:'smooth'});
 }
+
+/* ══════════════════ 전월세 실거래가 ══════════════════ */
+let rentFilter = 'all';
+
+function rtReset(id, placeholder){
+  const el=$(id); el.innerHTML=`<option value="">${placeholder}</option>`; el.disabled=true;
+}
+
+async function loadRentData(){
+  const keyRaw=$('svcKey').value.trim();
+  const lawd=$('rtLawdCd').value.trim();
+  const months=+$('rtLookback').value;
+  const errEl=$('rtErr'), okEl=$('rtOk');
+  errEl.style.display='none'; okEl.style.display='none';
+  $('rtSummary').innerHTML=''; $('rtResult').innerHTML='';
+  rtReset('rtDong','먼저 위에서 불러오기 클릭');
+  rtReset('rtApt','동을 먼저 선택하세요');
+  rtReset('rtPyeong','단지를 먼저 선택하세요');
+
+  if(!KEYLESS && !keyRaw){
+    errEl.style.display='';
+    errEl.innerHTML='인증키가 필요합니다. <b>매매 실거래가</b> 탭에서 인증키를 먼저 입력해 주세요.';
+    return;
+  }
+  const guLabel=$('rtLawdCd').selectedOptions[0].textContent;
+  okEl.style.display=''; okEl.textContent='전월세 데이터 확인 중…';
+
+  const ymList=[];
+  const now=new Date();
+  for(let i=0;i<months;i++){
+    const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
+    ymList.push(''+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0'));
+  }
+
+  // 사전 점검 — 전월세 API는 매매와 별도 활용신청이 필요하므로 원인을 명확히 안내
+  try{
+    const {text} = await rtmsFetch(0, keyRaw, lawd, ymList[0], 1, 1, 'rent');
+    const parsed = parseRTMS(text);
+    if(!parsed) throw new Error('응답 파싱 실패');
+    if(parsed.authError) throw new Error(parsed.message);
+    if(parsed.resultCode && parsed.resultCode!=='000' && parsed.resultCode!=='00') throw new Error(parsed.resultMsg||('오류코드 '+parsed.resultCode));
+  }catch(e){
+    okEl.style.display='none';
+    const hint = explainApiError(e.message) ||
+      '공공데이터포털에서 <b>국토교통부_아파트 전월세 실거래가 자료</b>를 별도로 활용신청했는지 확인해 주세요 (매매 자료와 승인이 따로입니다).';
+    errEl.style.display='';
+    errEl.innerHTML = `전월세 조회 실패 — ${e.message}<br><b>조치 방법:</b> ${hint}`;
+    return;
+  }
+
+  okEl.textContent = `${guLabel} 최근 ${months}개월 전월세 데이터를 불러오는 중… (0/${months}개월)`;
+  const results = await runPool(
+    ymList.map(ymd => () => fetchMonth(keyRaw, lawd, ymd, 0, 'rent')),
+    3,
+    (done,total)=>{ okEl.textContent = `${guLabel} 최근 ${months}개월 전월세 데이터를 불러오는 중… (${done}/${total}개월)`; }
+  );
+
+  let all=[]; const failed=[];
+  results.forEach((r,i)=>{ if(r.ok) all=all.concat(r.value); else failed.push(ymList[i]); });
+  if(all.length===0){
+    okEl.style.display='none';
+    errEl.style.display='';
+    errEl.textContent = `${guLabel}에서 최근 ${months}개월간 전월세 거래를 찾지 못했습니다.` + (failed.length?` (조회 실패한 월: ${failed.join(', ')})`:'');
+    return;
+  }
+
+  window.__rentAll = all;
+  okEl.textContent = `${guLabel} 최근 ${months}개월 전월세 ${all.length.toLocaleString()}건 로딩 완료`
+    + (failed.length?` (조회 실패한 월: ${failed.join(', ')})`:'')
+    + ' — 이제 동 → 단지 → 평형 순서로 선택하세요.';
+
+  const counts={};
+  all.forEach(it=>{ if(it.umdNm) counts[it.umdNm]=(counts[it.umdNm]||0)+1; });
+  const list=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  const sel=$('rtDong');
+  sel.innerHTML='<option value="">동을 선택하세요</option>'+list.map(d=>`<option value="${esc(d)}">${esc(d)} (${counts[d]}건)</option>`).join('');
+  sel.disabled=false;
+}
+
+function onRentDongChange(){
+  const dong=$('rtDong').value;
+  rtReset('rtApt','단지를 선택하세요'); rtReset('rtPyeong','단지를 먼저 선택하세요');
+  $('rtSummary').innerHTML=''; $('rtResult').innerHTML='';
+  if(!dong || !window.__rentAll) return;
+  const counts={};
+  window.__rentAll.forEach(it=>{ if(it.umdNm===dong) counts[it.aptNm]=(counts[it.aptNm]||0)+1; });
+  const list=Object.keys(counts).sort((a,b)=>counts[b]-counts[a]);
+  const sel=$('rtApt');
+  sel.innerHTML='<option value="">단지를 선택하세요</option>'+list.map(a=>`<option value="${esc(a)}">${esc(a)} (${counts[a]}건)</option>`).join('');
+  sel.disabled=false;
+}
+
+function onRentAptChange(){
+  const dong=$('rtDong').value, apt=$('rtApt').value;
+  rtReset('rtPyeong','평형을 선택하세요');
+  $('rtSummary').innerHTML=''; $('rtResult').innerHTML='';
+  if(!dong||!apt||!window.__rentAll) return;
+  const buckets={};
+  window.__rentAll.forEach(it=>{
+    if(it.umdNm!==dong||it.aptNm!==apt) return;
+    const k=Math.round(it.area*10)/10;
+    buckets[k]=(buckets[k]||0)+1;
+  });
+  const areas=Object.keys(buckets).map(Number).sort((a,b)=>a-b);
+  const sel=$('rtPyeong');
+  sel.innerHTML='<option value="">평형을 선택하세요</option>'+areas.map(a=>
+    `<option value="${a}">${a}㎡ (약 ${Math.round(a/2.46)}평형) · ${buckets[a]}건</option>`).join('');
+  sel.disabled=false;
+}
+
+function onRentPyeongChange(){ renderRent(); }
+
+function renderRent(){
+  const dong=$('rtDong').value, apt=$('rtApt').value, areaKey=parseFloat($('rtPyeong').value);
+  const sumEl=$('rtSummary'), resEl=$('rtResult');
+  sumEl.innerHTML=''; resEl.innerHTML='';
+  if(!dong||!apt||isNaN(areaKey)||!window.__rentAll) return;
+
+  let items = window.__rentAll.filter(it=>
+    it.umdNm===dong && it.aptNm===apt && Math.round(it.area*10)/10===areaKey
+  ).sort((a,b)=>dealKey(b)-dealKey(a));
+  if(rentFilter==='jeonse') items=items.filter(it=>it.rent===0);
+  else if(rentFilter==='wolse') items=items.filter(it=>it.rent>0);
+  if(items.length===0){
+    sumEl.innerHTML=`<div class="warn">선택한 조건(${esc(dong)} · ${esc(apt)} · ${areaKey}㎡)에 해당하는 계약이 없습니다.</div>`;
+    return;
+  }
+
+  const jeonse=items.filter(it=>it.rent===0), wolse=items.filter(it=>it.rent>0);
+  const avg=a=>a.length?Math.round(a.reduce((x,y)=>x+y,0)/a.length):0;
+  const jAvg=avg(jeonse.map(x=>x.deposit));
+  const wDepAvg=avg(wolse.map(x=>x.deposit)), wRentAvg=avg(wolse.map(x=>x.rent));
+  const latest=items[0];
+
+  // 전세가율 — 매매 탭에서 같은 단지·평형을 조회해 둔 경우 계산
+  let ratioBox='';
+  const saleItems=(window.__guItems||[]).filter(it=>
+    it.umdNm===dong && it.aptNm===apt && Math.round(it.area*10)/10===areaKey);
+  if(saleItems.length && jAvg>0){
+    const saleAvg=Math.round(saleItems.reduce((a,b)=>a+b.amt,0)/saleItems.length);
+    const ratio=(jAvg/saleAvg*100);
+    ratioBox=`<div style="margin-top:10px;padding:10px 12px;background:#F2F7F4;border:1px solid #CFE3D7;border-radius:6px">
+      <b class="green">전세가율 ${ratio.toFixed(1)}%</b> — 전세 평균 ${fmtManwon(jAvg)} ÷ 매매 평균 ${fmtManwon(saleAvg)} (매매 ${saleItems.length}건 기준)
+    </div>`;
+  } else if(jAvg>0){
+    ratioBox=`<div class="hint" style="margin-top:10px">※ <b>매매 실거래가</b> 탭에서 같은 구·단지·평형을 조회해 두면 전세가율이 자동 계산됩니다.</div>`;
+  }
+
+  sumEl.innerHTML=`
+    <div class="card" style="background:#F5F9FC;border-color:var(--ledger)">
+      <div style="font-size:11px;font-weight:700;color:var(--ledger);letter-spacing:.08em;margin-bottom:6px">도출 결과 — ${esc(dong)} · ${esc(apt)} · ${areaKey}㎡ (${items.length}건)</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px 16px">
+        <div><div class="hint" style="margin:0">최근 계약 (${latest.y}.${latest.m}.${latest.d}${latest.ctType?' · '+esc(latest.ctType):''})</div>
+          <div style="font-size:20px;font-weight:800;color:var(--tax-red);font-feature-settings:var(--mono-feat)">${fmtManwon(latest.deposit)}${latest.rent>0?` / 월 ${latest.rent.toLocaleString()}만원`:' (전세)'}</div></div>
+        <div><div class="hint" style="margin:0">전세 평균 보증금 (${jeonse.length}건)</div>
+          <div style="font-size:20px;font-weight:800;font-feature-settings:var(--mono-feat)">${jeonse.length?fmtManwon(jAvg):'-'}</div></div>
+        <div><div class="hint" style="margin:0">월세 평균 보증금 (${wolse.length}건)</div>
+          <div style="font-size:15px;font-weight:700;font-feature-settings:var(--mono-feat)">${wolse.length?fmtManwon(wDepAvg):'-'}</div></div>
+        <div><div class="hint" style="margin:0">월세 평균 월임대료</div>
+          <div style="font-size:15px;font-weight:700;font-feature-settings:var(--mono-feat)">${wolse.length?wRentAvg.toLocaleString()+'만원':'-'}</div></div>
+      </div>
+      ${ratioBox}
+    </div>`;
+
+  const rows=items.map(it=>
+    `<tr>
+      <td>${esc(it.aptNm)}</td>
+      <td>${it.area}㎡</td><td>${esc(it.floor)}층</td>
+      <td>${it.y}.${it.m}.${it.d}</td>
+      <td style="text-align:right;font-weight:700">${fmtManwon(it.deposit)}</td>
+      <td style="text-align:right">${it.rent>0?it.rent.toLocaleString()+'만원':'<span class="green">전세</span>'}</td>
+      <td>${esc(it.ctType||'-')}${it.ctTerm?'<br><span class="hint">'+esc(it.ctTerm)+'</span>':''}</td>
+    </tr>`).join('');
+  resEl.innerHTML=`<div style="overflow-x:auto"><table class="ref">
+    <tr><th>단지</th><th>전용면적</th><th>층</th><th>계약일</th><th>보증금</th><th>월세</th><th>계약구분</th></tr>${rows}</table></div>`;
+}
+
+$('rtDong').addEventListener('change', onRentDongChange);
+$('rtApt').addEventListener('change', onRentAptChange);
+$('rtPyeong').addEventListener('change', onRentPyeongChange);
+bindSeg('rt_seg_type', v=>{ rentFilter=v; renderRent(); });
 
 // 저장된 인증키 복원 (없으면 발급 안내 자동 노출)
 try{ const savedKey=localStorage.getItem(SVCKEY_STORE); if(savedKey) $('svcKey').value=savedKey; }catch(e){}

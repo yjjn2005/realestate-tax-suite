@@ -10,14 +10,22 @@
  *
  * 엔드포인트
  *  GET /health                     → {"ok":true,"keyConfigured":true|false}
- *  GET /rtms?LAWD_CD=&DEAL_YMD=&numOfRows=&pageNo=   → 실거래가 XML (키 자동 주입)
+ *  GET /rtms?LAWD_CD=&DEAL_YMD=&numOfRows=&pageNo=&type=sale|rent  → 실거래가 XML (키 자동 주입)
+ *      type=sale(기본): 아파트 매매 / type=rent: 아파트 전월세
  *  GET /?url=<apis.data.go.kr 주소>  → 레거시 통과 프록시 (앱 구버전 호환)
  */
 
-const ENDPOINTS = [
-  'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev',
-  'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade'
-];
+const ENDPOINTS = {
+  // 아파트 매매 실거래가 (상세 → 기본 순으로 자동 대체)
+  sale: [
+    'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev',
+    'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade'
+  ],
+  // 아파트 전월세 실거래가
+  rent: [
+    'https://apis.data.go.kr/1613000/RTMSDataSvcAptRent/getRTMSDataSvcAptRent'
+  ]
+};
 const ALLOW_HOSTS = ['apis.data.go.kr'];
 // 인증키 소진(트래픽 도용) 방지 — 브라우저에서 온 요청은 아래 출처만 허용
 const ALLOW_ORIGINS = [
@@ -75,9 +83,10 @@ export default {
       const rows = Math.min(parseInt(url.searchParams.get('numOfRows') || '1000', 10) || 1000, 1000);
       const page = Math.min(parseInt(url.searchParams.get('pageNo') || '1', 10) || 1, 20);
       const key = encodeKey(String(env.SERVICE_KEY).trim());
+      const type = url.searchParams.get('type') === 'rent' ? 'rent' : 'sale';
 
       let last = null;
-      for (const base of ENDPOINTS) {
+      for (const base of ENDPOINTS[type]) {
         const target = `${base}?serviceKey=${key}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=${rows}&pageNo=${page}`;
         try {
           // 같은 월 데이터는 10분 캐시 — 인증키 트래픽 절약
