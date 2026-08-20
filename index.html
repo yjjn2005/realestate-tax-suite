@@ -151,8 +151,9 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
           <option value="12">최근 12개월</option>
         </select>
       </div>
-      <div class="field" style="display:flex;align-items:flex-end">
+      <div class="field" style="display:flex;align-items:flex-end;gap:6px;flex-wrap:wrap">
         <button class="apibtn" onclick="loadGuData()">이 구의 단지 목록 불러오기</button>
+        <button class="apibtn" style="background:#5A6B7C" onclick="runDiag()">연결 테스트</button>
       </div>
     </div>
     <div class="grid" style="margin-top:12px">
@@ -168,6 +169,15 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
         <label>④ 평형 선택</label>
         <select id="pyeongSelect" disabled><option value="">단지를 먼저 선택하세요</option></select>
       </div>
+    </div>
+    <div class="warn" id="keyGuide" style="display:none">
+      <b>인증키가 필요합니다.</b> 실거래가는 국토교통부가 공공데이터포털을 통해서만 제공하므로, 무료 인증키를 한 번 발급받아 위 칸에 붙여넣으면 됩니다 (발급 후에는 이 브라우저에 저장돼 다시 입력할 필요가 없습니다).
+      <ol style="margin:6px 0 0 18px;line-height:1.8">
+        <li><a href="https://www.data.go.kr/tcs/dss/selectDataSetList.do?keyword=%EC%95%84%ED%8C%8C%ED%8A%B8%20%EB%A7%A4%EB%A7%A4%20%EC%8B%A4%EA%B1%B0%EB%9E%98" target="_blank" rel="noopener"><b>공공데이터포털에서 "아파트 매매 실거래" 검색</b></a> → <b>국토교통부_아파트 매매 실거래가 상세 자료</b> 선택</li>
+        <li>[활용신청] 클릭 → 활용목적 아무거나 입력 후 신청 (오픈API는 보통 즉시 승인)</li>
+        <li>마이페이지 &gt; 데이터활용 &gt; 개발계정에서 <b>일반 인증키</b>를 복사해 위 칸에 붙여넣기</li>
+      </ol>
+      <div style="margin-top:6px">※ 발급 직후에는 키가 활성화되기까지 <b>최대 1~2시간</b>이 걸릴 수 있습니다.</div>
     </div>
     <div class="err" id="apiErr"></div>
     <div class="ok" id="apiOk"></div>
@@ -866,11 +876,36 @@ function itemFrom(el){
 function dealKey(it){ return (+it.y||0)*10000 + (+it.m||0)*100 + (+it.d||0); }
 
 const RTMS_ROWS = 1000, RTMS_MAXPAGE = 5;
-async function fetchMonth(key, lawd, ymd){
+// 같은 실거래가 자료라도 계정별로 "상세 자료"/"기본 자료" 중 한쪽만 활용신청된 경우가 많아 두 엔드포인트를 자동 대체
+const RTMS_ENDPOINTS = [
+  {name:'아파트 매매 실거래가 상세 자료', url:'https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev'},
+  {name:'아파트 매매 실거래가 자료',     url:'https://apis.data.go.kr/1613000/RTMSDataSvcAptTrade/getRTMSDataSvcAptTrade'}
+];
+let RTMS_EP = 0;
+function rtmsUrl(ep, key, lawd, ymd, rows, page){
+  return `${RTMS_ENDPOINTS[ep].url}?serviceKey=${encodeSvcKey(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=${rows}&pageNo=${page}`;
+}
+// data.go.kr 오류를 사람이 읽을 수 있는 안내로 변환
+function explainApiError(msg){
+  const m=(msg||'').toUpperCase();
+  if(m.includes('NOT_REGISTERED')||m.includes('등록되지 않은'))
+    return '인증키가 등록되지 않은 키로 확인됩니다. ① 키를 다시 복사해 붙여넣거나(Encoding/Decoding 둘 다 가능), ② 발급 직후라면 1~2시간 뒤 다시 시도해 주세요.';
+  if(m.includes('ACCESS_DENIED')||m.includes('접근거부'))
+    return '이 인증키로는 해당 API 활용신청이 승인되어 있지 않습니다. 공공데이터포털에서 "국토교통부_아파트 매매 실거래가 상세 자료" 활용신청을 완료해 주세요.';
+  if(m.includes('LIMITED_NUMBER')||m.includes('요청횟수'))
+    return '오늘 사용할 수 있는 조회 횟수를 모두 소진했습니다. 내일 다시 시도하거나 포털에서 트래픽 증가를 신청해 주세요.';
+  if(m.includes('DEADLINE')||m.includes('기간만료'))
+    return '인증키 활용기간이 만료되었습니다. 공공데이터포털에서 연장 신청해 주세요.';
+  if(m.includes('NO_OPENAPI_SERVICE')||m.includes('서비스가 없거나'))
+    return '해당 API 서비스를 찾을 수 없습니다(엔드포인트 변경 가능성).';
+  return '';
+}
+async function fetchMonth(key, lawd, ymd, ep){
+  if(ep==null) ep=RTMS_EP;
   const rows=[];
   let page=1, total=null;
   while(page<=RTMS_MAXPAGE){
-    const url=`https://apis.data.go.kr/1613000/RTMSDataSvcAptTradeDev/getRTMSDataSvcAptTradeDev?serviceKey=${encodeSvcKey(key)}&LAWD_CD=${lawd}&DEAL_YMD=${ymd}&numOfRows=${RTMS_ROWS}&pageNo=${page}`;
+    const url=rtmsUrl(ep, key, lawd, ymd, RTMS_ROWS, page);
     const {text} = await tryFetch(url);
     const parsed = parseRTMS(text);
     if(!parsed) throw new Error('응답 파싱 실패');
@@ -901,6 +936,66 @@ async function runPool(tasks, limit, onDone){
   return out;
 }
 
+// 본 조회 전에 1건만 불러 인증키·엔드포인트를 먼저 확인 (실패 시 즉시 원인 안내)
+async function probeKey(key, lawd, ymd){
+  const errs=[];
+  for(let ep=0; ep<RTMS_ENDPOINTS.length; ep++){
+    try{
+      const {text}=await tryFetch(rtmsUrl(ep,key,lawd,ymd,1,1));
+      const parsed=parseRTMS(text);
+      if(!parsed){ errs.push(`${RTMS_ENDPOINTS[ep].name}: 응답 파싱 실패`); continue; }
+      if(parsed.authError){ errs.push(`${RTMS_ENDPOINTS[ep].name}: ${parsed.message}`); continue; }
+      if(parsed.resultCode && parsed.resultCode!=='000' && parsed.resultCode!=='00'){
+        errs.push(`${RTMS_ENDPOINTS[ep].name}: ${parsed.resultMsg||parsed.resultCode}`); continue;
+      }
+      RTMS_EP=ep;
+      return {ok:true, ep, name:RTMS_ENDPOINTS[ep].name};
+    }catch(e){ errs.push(`${RTMS_ENDPOINTS[ep].name}: ${e.message}`); }
+  }
+  return {ok:false, errors:errs};
+}
+
+// 연결 테스트 — 프록시 / 인증키 / 데이터 수신을 단계별로 점검
+async function runDiag(){
+  const errEl=$('apiErr'), okEl=$('apiOk'), resEl=$('apiResult'), sumEl=$('apiSummary');
+  errEl.style.display='none'; okEl.style.display='none'; resEl.innerHTML=''; sumEl.innerHTML='';
+  const lines=[];
+  const now=new Date(); const d=new Date(now.getFullYear(), now.getMonth()-1, 1);
+  const ymd=''+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0');
+  const lawd=$('lawdCd').value.trim();
+  const key=$('svcKey').value.trim();
+
+  okEl.style.display=''; okEl.textContent='연결 테스트 진행 중…';
+  // ① 프록시(네트워크) 점검 — 일부러 더미 키로 호출해 서버 응답 도달 여부만 확인
+  let netOK=false;
+  try{
+    const {text,via}=await tryFetch(rtmsUrl(0,'DIAGNOSTIC_DUMMY_KEY',lawd,ymd,1,1));
+    netOK = !!parseRTMS(text);
+    lines.push(`① 서버 연결: <b class="green">정상</b> (경로: ${via==='direct'?'직접 호출':'프록시'})`);
+  }catch(e){ lines.push(`① 서버 연결: <b class="red">실패</b> — ${e.message}`); }
+
+  // ② 인증키 점검
+  if(!key){
+    lines.push('② 인증키: <b class="red">미입력</b> — 아래 안내대로 발급 후 붙여넣어 주세요.');
+    $('keyGuide').style.display='';
+  } else if(netOK){
+    const p=await probeKey(key,lawd,ymd);
+    if(p.ok){
+      lines.push(`② 인증키: <b class="green">정상</b> (사용 가능 API: ${p.name})`);
+      lines.push('③ 데이터 수신: <b class="green">정상</b> — [이 구의 단지 목록 불러오기]를 눌러 주세요.');
+      $('keyGuide').style.display='none';
+    } else {
+      const hint=explainApiError(p.errors.join(' '));
+      lines.push(`② 인증키: <b class="red">사용 불가</b><br>&nbsp;&nbsp;· ${p.errors.join('<br>&nbsp;&nbsp;· ')}`);
+      if(hint) lines.push(`③ 조치 방법: ${hint}`);
+      $('keyGuide').style.display='';
+    }
+  }
+  okEl.style.display='none';
+  errEl.style.display=''; errEl.style.color='var(--ink)';
+  errEl.innerHTML = '<b>연결 테스트 결과</b><br>'+lines.join('<br>');
+}
+
 const SVCKEY_STORE='ynk_rtms_svckey';
 function clearSvcKey(){
   try{ localStorage.removeItem(SVCKEY_STORE); }catch(e){}
@@ -918,9 +1013,14 @@ async function loadGuData(){
   resetSelect('dongSelect','먼저 위에서 불러오기 클릭');
   resetSelect('aptSelect','동을 먼저 선택하세요');
   resetSelect('pyeongSelect','단지를 먼저 선택하세요');
-  if(!keyRaw){ errEl.style.display=''; errEl.textContent='인증키를 입력해 주세요.'; return; }
+  errEl.style.color='';
+  if(!keyRaw){
+    errEl.style.display=''; errEl.textContent='인증키를 입력해 주세요. (아래 발급 안내 참고 — 1회만 발급하면 계속 사용할 수 있습니다)';
+    $('keyGuide').style.display='';
+    return;
+  }
   const guLabel = $('lawdCd').selectedOptions[0].textContent;
-  okEl.style.display=''; okEl.textContent = `${guLabel} 최근 ${months}개월 거래 데이터를 불러오는 중… (0/${months}개월)`;
+  okEl.style.display=''; okEl.textContent = `인증키 확인 중…`;
 
   const ymList=[];
   const now=new Date();
@@ -928,6 +1028,19 @@ async function loadGuData(){
     const d=new Date(now.getFullYear(), now.getMonth()-i, 1);
     ymList.push(''+d.getFullYear()+String(d.getMonth()+1).padStart(2,'0'));
   }
+
+  // 사전 점검: 인증키·엔드포인트를 먼저 확인해 실패 시 원인을 바로 안내
+  const probe = await probeKey(keyRaw, lawd, ymList[0]);
+  if(!probe.ok){
+    okEl.style.display='none';
+    const hint=explainApiError(probe.errors.join(' '));
+    errEl.style.display='';
+    errEl.innerHTML = `조회 실패 — ${probe.errors.join(' / ')}` + (hint?`<br><b>조치 방법:</b> ${hint}`:'');
+    $('keyGuide').style.display='';
+    return;
+  }
+  $('keyGuide').style.display='none';
+  okEl.textContent = `${guLabel} 최근 ${months}개월 거래 데이터를 불러오는 중… (0/${months}개월)`;
 
   const results = await runPool(
     ymList.map(ymd => () => fetchMonth(keyRaw, lawd, ymd)),
@@ -938,7 +1051,10 @@ async function loadGuData(){
   const authFail = results.find(r=>!r.ok && r.error && r.error.auth);
   if(authFail){
     okEl.style.display='none';
-    errEl.style.display=''; errEl.textContent='조회 실패: '+authFail.error.message+' — data.go.kr에서 인증키·API 활용신청 상태를 확인해 주세요.';
+    const hint=explainApiError(authFail.error.message);
+    errEl.style.display='';
+    errEl.innerHTML = '조회 실패: '+authFail.error.message + (hint?`<br><b>조치 방법:</b> ${hint}`:'');
+    $('keyGuide').style.display='';
     return;
   }
 
@@ -1145,8 +1261,9 @@ function applyDirect(amtManwon, target){
   window.scrollTo({top:0, behavior:'smooth'});
 }
 
-// 저장된 인증키 복원
+// 저장된 인증키 복원 (없으면 발급 안내 자동 노출)
 try{ const savedKey=localStorage.getItem(SVCKEY_STORE); if(savedKey) $('svcKey').value=savedKey; }catch(e){}
+if(!$('svcKey').value.trim()) $('keyGuide').style.display='';
 
 // 초기 렌더
 calcAcq(); calcProp(); jbRender(); cgRender();
