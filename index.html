@@ -152,7 +152,19 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
       </div>
       <div class="field">
         <label>건물 동(선택, 필터용)</label>
-        <input type="text" id="aptDongFilter" placeholder="예: 602">
+        <input type="text" id="aptDongFilter" placeholder="예: 105">
+      </div>
+      <div class="field">
+        <label>전용면적(㎡, 선택)</label>
+        <input type="number" id="aptAreaFilter" placeholder="예: 84.7" step="0.1">
+      </div>
+      <div class="field">
+        <label>면적 오차허용(±㎡)</label>
+        <input type="number" id="aptAreaTol" value="1" step="0.1">
+      </div>
+      <div class="field">
+        <label>층(선택, 필터용)</label>
+        <input type="text" id="aptFloorFilter" placeholder="예: 10">
       </div>
       <div class="field">
         <label>조회 기간</label>
@@ -169,6 +181,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
     </div>
     <div class="err" id="apiErr"></div>
     <div class="ok" id="apiOk"></div>
+    <div id="apiSummary" style="margin-top:10px"></div>
     <div id="apiResult" style="margin-top:8px"></div>
     <div class="warn">
       ✅ 유앤김 패밀리 전용 Cloudflare Worker 프록시를 최우선으로 사용하며, 문제가 있을 때만 공개 프록시(corsproxy.io → allorigins.win → codetabs.com) 순으로 자동 폴백합니다. 실거래가 API는 <b>동(棟)까지만</b> 제공하고 호수는 개인정보라 제공하지 않으므로, 검색 결과에서 층·면적·동이 실제 매물과 가장 가까운 건을 골라 "반영" 버튼을 눌러주세요. 공시가격은 별도 공개 API가 없어 부동산공시가격알리미에서 직접 확인해 입력해야 합니다.
@@ -739,17 +752,30 @@ function parseRTMS(xmlText){
   return {resultCode, resultMsg, items};
 }
 
+// 만원 단위 금액을 "24억 7,000만원" 형태로 명확하게 표기 (오독 방지)
+function fmtManwon(manwon){
+  const eok = Math.floor(manwon/10000);
+  const rest = manwon - eok*10000;
+  const parts=[];
+  if(eok>0) parts.push(eok.toLocaleString()+'억');
+  if(rest>0 || eok===0) parts.push(rest.toLocaleString()+'만원');
+  return parts.join(' ');
+}
+
 async function fetchRTMS(){
   const keyRaw=$('svcKey').value.trim();
   const lawd=($('lawdCdManual').value.trim() || $('lawdCd').value.trim());
   const query=$('aptQuery').value.trim();
   const dongFilter=$('aptDongFilter').value.trim();
+  const areaFilter = $('aptAreaFilter').value.trim() ? parseFloat($('aptAreaFilter').value) : null;
+  const areaTol = parseFloat($('aptAreaTol').value)||1;
+  const floorFilter = $('aptFloorFilter').value.trim();
   const months=+$('lookbackMonths').value;
-  const errEl=$('apiErr'), okEl=$('apiOk'), resEl=$('apiResult');
-  errEl.style.display='none'; okEl.style.display='none'; resEl.innerHTML='';
+  const errEl=$('apiErr'), okEl=$('apiOk'), resEl=$('apiResult'), sumEl=$('apiSummary');
+  errEl.style.display='none'; okEl.style.display='none'; resEl.innerHTML=''; sumEl.innerHTML='';
   if(!keyRaw||!lawd){ errEl.style.display=''; errEl.textContent='인증키와 구/시군구를 확인해 주세요.'; return; }
   if(!/^\d{5}$/.test(lawd)){ errEl.style.display=''; errEl.textContent='법정동코드는 숫자 5자리여야 합니다 (예: 11680).'; return; }
-  if(!query){ errEl.style.display=''; errEl.textContent='검색할 단지명을 입력해 주세요 (예: 래미안강남힐즈).'; return; }
+  if(!query){ errEl.style.display=''; errEl.textContent='검색할 단지명을 입력해 주세요 (예: 올림픽훼밀리).'; return; }
   resEl.innerHTML = '<div style="font-size:12px;color:var(--ink-soft)">조회 중… (최근 '+months+'개월)</div>';
 
   // 조회할 계약년월(YYYYMM) 목록 생성
@@ -781,11 +807,15 @@ async function fetchRTMS(){
         if(!normalize(aptNm).includes(qn)) return;
         const aptDong=g(it,'aptDong');
         if(dongFilter && aptDong && normalize(aptDong)!==normalize(dongFilter)) return;
+        const areaVal = parseFloat(g(it,'excluUseAr'))||0;
+        if(areaFilter!==null && Math.abs(areaVal-areaFilter)>areaTol) return;
+        const floorVal = g(it,'floor');
+        if(floorFilter && floorVal!==floorFilter) return;
         allItems.push({
           aptNm, aptDong,
           area: g(it,'excluUseAr'),
-          amt: (+g(it,'dealAmount').replace(/,/g,'')||0),
-          floor: g(it,'floor'),
+          amt: (+g(it,'dealAmount').replace(/,/g,'')||0), // 단위: 만원
+          floor: floorVal,
           y: g(it,'dealYear'), m: g(it,'dealMonth'), d: g(it,'dealDay'),
           by: g(it,'buildYear')
         });
@@ -798,14 +828,44 @@ async function fetchRTMS(){
 
   if(allItems.length===0){
     okEl.style.display='';
-    okEl.textContent = `검색 완료 — "${query}" 조건에 맞는 거래가 최근 ${months}개월 내 없습니다.`;
+    okEl.textContent = `검색 완료 — "${query}" 조건에 맞는 거래가 최근 ${months}개월 내 없습니다. 동·면적·층 필터를 넓혀 다시 시도해 보세요.`;
     if(errors.length) okEl.textContent += ` (일부 월 조회 실패: ${errors.length}건)`;
     resEl.innerHTML=''; return;
   }
   allItems.sort((a,b)=> (b.y+b.m.padStart(2,'0')+b.d.padStart(2,'0')) - (a.y+a.m.padStart(2,'0')+a.d.padStart(2,'0')));
 
   okEl.style.display='';
-  okEl.textContent = `"${query}" 검색 결과 ${allItems.length}건 (최근 ${months}개월). 아래에서 실제 매물과 가장 가까운 건을 골라 반영 버튼을 누르세요.`;
+  okEl.textContent = `"${query}" 검색 결과 ${allItems.length}건 (최근 ${months}개월). 조건에 맞는 도출가격은 아래 요약을 참고하고, 실제 매물과 가장 가까운 건을 골라 반영 버튼을 누르세요.`;
+
+  // ── 도출가격 요약 박스 ──
+  const amts = allItems.map(x=>x.amt);
+  const latest = allItems[0];
+  const avg = Math.round(amts.reduce((a,b)=>a+b,0)/amts.length);
+  const max = Math.max(...amts), min = Math.min(...amts);
+  const filterTxt = [
+    dongFilter?dongFilter+'동':null,
+    areaFilter!==null?areaFilter+'㎡(±'+areaTol+')':null,
+    floorFilter?floorFilter+'층':null
+  ].filter(Boolean).join(' · ') || '전체(동/면적/층 필터 없음)';
+  sumEl.innerHTML = `
+    <div class="card" style="background:#F5F9FC;border-color:var(--ledger)">
+      <div style="font-size:11px;font-weight:700;color:var(--ledger);letter-spacing:.08em;margin-bottom:6px">도출 결과 — 조건: ${filterTxt}</div>
+      <div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px 16px">
+        <div><div class="hint" style="margin:0">최근 거래가 (${latest.y}.${latest.m}.${latest.d})</div>
+          <div style="font-size:20px;font-weight:800;color:var(--tax-red);font-feature-settings:var(--mono-feat)">${fmtManwon(latest.amt)}</div></div>
+        <div><div class="hint" style="margin:0">평균 거래가 (${allItems.length}건)</div>
+          <div style="font-size:20px;font-weight:800;font-feature-settings:var(--mono-feat)">${fmtManwon(avg)}</div></div>
+        <div><div class="hint" style="margin:0">최고가</div>
+          <div style="font-size:15px;font-weight:700;font-feature-settings:var(--mono-feat)">${fmtManwon(max)}</div></div>
+        <div><div class="hint" style="margin:0">최저가</div>
+          <div style="font-size:15px;font-weight:700;font-feature-settings:var(--mono-feat)">${fmtManwon(min)}</div></div>
+      </div>
+      <div style="margin-top:10px;display:flex;gap:6px;flex-wrap:wrap">
+        <button class="apibtn" onclick="applyDirect(${latest.amt},'acq')">최근가 → 취득세 반영</button>
+        <button class="apibtn" onclick="applyDirect(${avg},'acq')">평균가 → 취득세 반영</button>
+        <button class="apibtn" onclick="applyDirect(${latest.amt},'sale')">최근가 → 양도가 반영</button>
+      </div>
+    </div>`;
 
   window.__rtmsItems = allItems;
   const rows = allItems.map((it,idx)=>
@@ -813,7 +873,7 @@ async function fetchRTMS(){
       <td>${it.aptNm}${it.aptDong&&it.aptDong.trim()?' '+it.aptDong+'동':''}</td>
       <td>${it.area}㎡</td><td>${it.floor}층</td><td>${it.by}</td>
       <td>${it.y}.${it.m}.${it.d}</td>
-      <td style="text-align:right;font-weight:700">${it.amt.toLocaleString()}만원</td>
+      <td style="text-align:right;font-weight:700">${fmtManwon(it.amt)}</td>
       <td style="white-space:nowrap">
         <button class="apibtn" style="padding:5px 8px;font-size:11px" onclick="applyRTMS(${idx},'acq')">취득세 반영</button>
         <button class="apibtn" style="padding:5px 8px;font-size:11px;margin-left:4px" onclick="applyRTMS(${idx},'sale')">양도가 반영</button>
@@ -827,7 +887,10 @@ async function fetchRTMS(){
 function applyRTMS(idx, target){
   const it = window.__rtmsItems && window.__rtmsItems[idx];
   if(!it) return;
-  const eok = it.amt/10000; // 만원 → 억원
+  applyDirect(it.amt, target);
+}
+function applyDirect(amtManwon, target){
+  const eok = amtManwon/10000; // 만원 → 억원
   if(target==='acq'){
     $('aq_price').value = eok;
     calcAcq();
