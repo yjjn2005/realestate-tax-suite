@@ -28,6 +28,10 @@ h1{font-size:19px;font-weight:800;letter-spacing:-.01em;margin-top:3px}
 .mtab{flex:1;min-width:70px;padding:12px 6px;border:1.5px solid var(--line-strong);border-radius:8px;
   background:var(--card);cursor:pointer;font-family:inherit;font-size:13px;font-weight:800;color:var(--ink-soft);text-align:center}
 .mtab.on{background:var(--ledger);color:#fff;border-color:var(--ledger)}
+@media(max-width:640px){
+  .maintabs{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .mtab{min-width:0;padding:10px 4px;font-size:12px;line-height:1.35}
+}
 .mpanel{display:none}
 .mpanel.on{display:block}
 
