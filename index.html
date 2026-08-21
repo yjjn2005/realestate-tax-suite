@@ -305,6 +305,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
         <label>취득 유형</label>
         <select id="aq_type">
           <option value="paid" selected>유상매매</option>
+          <option value="swap">교환(유상)</option>
           <option value="gift">무상취득(증여)</option>
           <option value="inherit">상속</option>
         </select>
@@ -425,8 +426,17 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
   <div class="sec-label"><span class="tag">입력</span><h2>양도 조건</h2><small>1세대 1주택 가정 · 금액 단위: 억원</small></div>
   <div class="card">
     <div class="grid">
+      <div class="field" style="grid-column:1/-1">
+        <label>거래 유형</label>
+        <div class="seg" id="cg_seg_kind"><button data-v="sell" class="on">매도</button><button data-v="swap">교환(맞바꿈)</button></div>
+        <div class="hint" id="cg_kindHint" style="display:none">교환도 세법상 <b>양도</b>입니다. 양도가액은 <b>교환으로 받는 부동산의 시가 ± 정산금</b>으로 계산됩니다.</div>
+      </div>
       <div class="field"><label>취득가액</label><div class="unit-in"><input type="number" id="cg_acq" value="8" step="0.5" min="0"><span class="u">억</span></div></div>
-      <div class="field"><label>양도(예정)가액</label><div class="unit-in"><input type="number" id="cg_sale" value="15" step="0.5" min="0"><span class="u">억</span></div></div>
+      <div class="field" id="cg_fSale"><label>양도(예정)가액</label><div class="unit-in"><input type="number" id="cg_sale" value="15" step="0.5" min="0"><span class="u">억</span></div></div>
+      <div class="field" id="cg_fSwapVal" style="display:none"><label>받는 부동산의 시가</label><div class="unit-in"><input type="number" id="cg_swapVal" value="12" step="0.5" min="0"><span class="u">억</span></div>
+        <div class="hint">감정평가액 등 시가</div></div>
+      <div class="field" id="cg_fSwapCash" style="display:none"><label>정산금 (받으면 +, 주면 −)</label><div class="unit-in"><input type="number" id="cg_swapCash" value="3" step="0.5"><span class="u">억</span></div>
+        <div class="hint">차액 정산이 없으면 0</div></div>
       <div class="field"><label>필요경비</label><div class="unit-in"><input type="number" id="cg_exp" value="0.3" step="0.1" min="0"><span class="u">억</span></div></div>
       <div class="field"><label>보유기간</label><div class="unit-in"><input type="number" id="cg_hold" value="10" step="1" min="0"><span class="u">년</span></div></div>
       <div class="field"><label>거주기간</label><div class="unit-in"><input type="number" id="cg_res" value="10" step="1" min="0"><span class="u">년</span></div></div>
@@ -437,9 +447,14 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
   </div>
 </section>
 <section>
-  <div class="sec-label"><span class="tag">대시보드</span><h2>매도시점을 선택하세요</h2></div>
+  <div class="sec-label"><span class="tag">대시보드</span><h2 id="cg_dashTitle">매도시점을 선택하세요</h2></div>
   <div class="yr-btns" id="cg_yrBtns"></div>
   <div class="card"><table class="ledger-tbl" id="cg_detail"></table></div>
+  <div class="warn" id="cg_swapWarn" style="display:none">
+    🔄 <b>교환은 쌍방 모두 양도자이자 취득자</b>입니다 — 나와 상대방 각각 <b>양도소득세</b>를 신고하고, 각각 <b>취득세</b>도 납부해야 합니다.
+    취득세 과세표준은 사실상 취득가격이 원칙이며, 불분명하거나 특수관계인 간 저가교환이면 시가인정액이 적용될 수 있습니다.
+    <div style="margin-top:8px"><button class="apibtn" onclick="applySwapToAcq()">받는 부동산 → 취득세 계산하기</button></div>
+  </div>
 </section>
 </div>
 
@@ -452,6 +467,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
       <li>지방교육세: 주택 유상거래는 (표준세율×50%)×20% = 표준세율×10% → 0.1~0.3%, 중과(8%·12%) 구간 0.4%. 농어촌특별세: 전용 85㎡ 초과 시 0.2%(표준)/0.6%(8% 중과)/1.0%(12% 중과), 국민주택 규모 이하는 비과세.</li>
       <li>무상취득(증여): 조정대상지역 3억원 이상 12%, 그 외 3.5%. 상속: 2.8%(무상취득 지방교육세 0.16%), <b>무주택 세대가 주택을 상속</b>받는 경우 0.8% 세율특례(지방교육세 미부과)로 계산.</li>
       <li>생애최초 주택 구입(취득가액 12억원 이하): 취득세를 <b>최대 200만원</b>까지 감면(지방세특례제한법 제36조의3). 지방교육세·농특세는 감면 전 세율 기준으로 그대로 계산합니다.</li>
+      <li><b>교환</b>은 유상승계취득이므로 매매와 같은 세율(1~3% 또는 중과 8·12%)이 적용되며, 생애최초 감면·일시적 2주택 중과배제도 동일하게 판단합니다. 과세표준은 사실상 취득가격이 원칙이나, 가격이 불분명하거나 특수관계인 간 저가교환이면 시가인정액이 적용될 수 있습니다.</li>
       <li>2026.1.1 취득분부터 특수관계인 간 현저한 저가 거래(시세 30% 또는 3억원 초과 인하)는 증여로 간주되어 무상취득세율이 적용될 수 있음.</li>
     </ul>
     <b>재산세</b>
@@ -476,6 +492,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
       <li>거주 2년 미만(비과세 배제)은 일반 장기보유공제(표1) 적용 — 3년 이상부터 연 2%, 15년 이상 30% 한도.</li>
       <li>기본공제 250만원(인별), 기본세율 6~45% 누진, 지방소득세 10% 가산.</li>
       <li>부부 공동명의(50:50)는 인별 과세로 차익·기본공제·세율을 각자 적용해 합산, 공제한도도 지분만큼 배분.</li>
+      <li><b>교환</b>: 소득세법상 교환도 유상 양도에 해당하므로 양도세가 과세됩니다. 양도가액은 <b>교환으로 받는 부동산의 시가 ± 정산금</b>(받으면 가산, 주면 차감)으로 보며, 비과세·장기보유공제 요건은 매도와 동일하게 적용합니다. 쌍방 모두 양도자이자 취득자이므로 각자 양도세와 취득세가 발생하고, 교환으로 주택이 늘면 <b>일시적 2주택</b> 여부를 별도로 따져야 합니다. (경작상 필요에 의한 농지 교환·분합은 별도 비과세 특례가 있습니다.)</li>
     </ul>
     <p style="margin-top:8px">본 계산기는 2026년 발표 세제개편안 언론보도를 바탕으로 한 참고용 시뮬레이션이며, 국회 통과 과정에서 세부 내용이 변경될 수 있습니다. 실제 신고·납부 전 반드시 세무 전문가 확인이 필요합니다.</p>
   </div>
@@ -535,8 +552,9 @@ function calcAcq(){
   $('aq_familyWarn').style.display = $('aq_family').checked ? '' : 'none';
 
   // 조건에 해당할 때만 옵션 노출 (해당 없으면 체크값 무시)
-  const canFirst   = corp==='N' && type==='paid' && houses===1 && price<=12;
-  const canTemp2   = corp==='N' && type==='paid' && houses===2 && adj==='Y';
+  const isPaid     = (type==='paid' || type==='swap');   // 교환도 유상취득
+  const canFirst   = corp==='N' && isPaid && houses===1 && price<=12;
+  const canTemp2   = corp==='N' && isPaid && houses===2 && adj==='Y';
   const canInhOne  = corp==='N' && type==='inherit';
   $('aq_optFirst').style.display  = canFirst ? '' : 'none';
   $('aq_optTemp2').style.display  = canTemp2 ? '' : 'none';
@@ -555,18 +573,19 @@ function calcAcq(){
     if(inhOne){ rate=0.8; eduRate=0; ruleTxt='무주택 세대의 1주택 상속 — 0.8% 세율특례'; eduNote=' · 세율특례로 미부과'; }
     else { rate=2.8; eduRate=0.16; ruleTxt='상속 취득 — 2.8%'; }
   } else {
-    // 유상매매
-    if(houses===1){ rate=aqStdRate(price); eduRate=aqEduRate(rate); ruleTxt='1주택 표준세율(1~3%, 6~9억 선형)'; }
+    // 유상매매 · 교환
+    const pre = (type==='swap') ? '교환(유상취득) · ' : '';
+    if(houses===1){ rate=aqStdRate(price); eduRate=aqEduRate(rate); ruleTxt=pre+'1주택 표준세율(1~3%, 6~9억 선형)'; }
     else if(houses===2){
-      if(adj==='Y' && !temp2){ rate=8; eduRate=0.4; ruleTxt='2주택 · 조정대상지역 — 8% 중과'; }
+      if(adj==='Y' && !temp2){ rate=8; eduRate=0.4; ruleTxt=pre+'2주택 · 조정대상지역 — 8% 중과'; }
       else {
         rate=aqStdRate(price); eduRate=aqEduRate(rate);
-        ruleTxt = (adj==='Y') ? '2주택 · 일시적 2주택 — 중과 배제, 표준세율' : '2주택 · 비조정지역 — 표준세율(1주택과 동일)';
+        ruleTxt = pre + ((adj==='Y') ? '2주택 · 일시적 2주택 — 중과 배제, 표준세율' : '2주택 · 비조정지역 — 표준세율(1주택과 동일)');
       }
     } else if(houses===3){
-      if(adj==='Y'){ rate=12; eduRate=0.4; ruleTxt='3주택 · 조정대상지역 — 12% 중과'; }
-      else { rate=8; eduRate=0.4; ruleTxt='3주택 · 비조정지역 — 8% 중과'; }
-    } else { rate=12; eduRate=0.4; ruleTxt='4주택 이상 — 12% 중과'; }
+      if(adj==='Y'){ rate=12; eduRate=0.4; ruleTxt=pre+'3주택 · 조정대상지역 — 12% 중과'; }
+      else { rate=8; eduRate=0.4; ruleTxt=pre+'3주택 · 비조정지역 — 8% 중과'; }
+    } else { rate=12; eduRate=0.4; ruleTxt=pre+'4주택 이상 — 12% 중과'; }
   }
 
   const acqTax = price*억*rate/100;
@@ -584,7 +603,8 @@ function calcAcq(){
     (firstCut>0 ? row('생애최초 감면 (−) <span class="green">최대 200만원</span>', -firstCut, 'sub') : '') +
     row(`지방교육세 (${pct(eduRate)}%${eduNote})`, eduTax) +
     row(`농어촌특별세 (${pct(nongRate)}%${over85?'':' · 85㎡이하 비과세'})`, nongTax) +
-    row('총 납부세액', total, 'sum');
+    row('총 납부세액', total, 'sum') +
+    (type==='swap' ? '<tr class="sub"><td colspan="2" style="text-align:left">※ 교환은 유상취득이므로 매매와 같은 세율이 적용됩니다. 과세표준은 <b>사실상 취득가격</b>이 원칙이며, 불분명하거나 특수관계인 간 저가교환이면 <b>시가인정액</b>이 적용될 수 있습니다.</td></tr>' : '');
 }
 ['aq_price'].forEach(id=>{ $(id).addEventListener('input',calcAcq); });
 $('aq_houses').addEventListener('change',calcAcq);
@@ -819,12 +839,25 @@ const CG_YEARS=[
   {y:'2029~',extra:3,regime:'y29',rule:'거주8%·한도10억'}
 ];
 let cgSelYear=0;
+let cgKind='sell';   // sell: 매도 / swap: 교환
+// 교환의 양도가액 = 교환으로 받는 부동산의 시가 + 받은 정산금 − 지급한 정산금
+function cgSaleValue(){
+  return cgKind==='swap' ? Math.max(0, num('cg_swapVal') + num('cg_swapCash')) : num('cg_sale');
+}
 function cgRead(){
   return {
-    acq:num('cg_acq'), sale:num('cg_sale'), exp:num('cg_exp'),
+    acq:num('cg_acq'), sale:cgSaleValue(), exp:num('cg_exp'),
     hold:num('cg_hold'), res:num('cg_res'),
     share: $('cg_owner').value==='joint'?0.5:1
   };
+}
+// 교환으로 받는 부동산의 취득세를 취득세 탭에서 이어서 계산
+function applySwapToAcq(){
+  $('aq_price').value = num('cg_swapVal');
+  $('aq_type').value = 'swap';
+  calcAcq();
+  showMain(2);
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 function cgRender(){
   const p=cgRead();
@@ -838,8 +871,12 @@ function cgRender(){
     `<span class="y">${R.y}년</span><span class="r">${R.rule}</span><span class="amt">${won(R.t.tax*억)}</span></button>`
   ).join('');
   const R=rs[cgSelYear], t=R.t;
+  const cash=num('cg_swapCash');
   $('cg_detail').innerHTML=
-    row('양도가액',wonB(p.sale))+
+    (cgKind==='swap'
+      ? row('양도가액 (교환)', wonB(p.sale)) +
+        row(`└ 받는 부동산 시가 ${wonB(num('cg_swapVal'))} ${cash>=0?'+ 수령 정산금':'− 지급 정산금'} ${wonB(Math.abs(cash))}`, '', 'sub')
+      : row('양도가액',wonB(p.sale)))+
     row('양도차익',wonB(t.gain))+
     row('과세대상 차익(12억 비과세 안분)',wonB(t.taxable),'sub')+
     row(`장특공제 ${Math.round(t.rate*100)}%${t.capped?' <span class="red">(한도적용)</span>':''}`,wonB(t.ded),'sub')+
@@ -848,6 +885,20 @@ function cgRender(){
     row('양도소득세(지방세포함)',wonB(t.tax),'sum');
 }
 function cgPick(i){ cgSelYear=i; cgRender(); }
+bindSeg('cg_seg_kind', v=>{
+  cgKind=v;
+  const swap = v==='swap';
+  $('cg_fSale').style.display = swap?'none':'';
+  $('cg_fSwapVal').style.display = swap?'':'none';
+  $('cg_fSwapCash').style.display = swap?'':'none';
+  $('cg_kindHint').style.display = swap?'':'none';
+  $('cg_swapWarn').style.display = swap?'':'none';
+  $('cg_dashTitle').textContent = swap?'교환시점을 선택하세요':'매도시점을 선택하세요';
+  cgRender();
+});
+['cg_swapVal','cg_swapCash'].forEach(id=>{
+  $(id).addEventListener('input',cgRender); $(id).addEventListener('change',cgRender);
+});
 ['cg_acq','cg_sale','cg_exp','cg_hold','cg_res'].forEach(id=>{
   $(id).addEventListener('input',cgRender); $(id).addEventListener('change',cgRender);
 });
