@@ -129,7 +129,19 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
   <button class="mtab" onclick="showMain(6)">📐 세율표</button>
 </div>
 
+<!-- ══════════ 기기 간 동기화 (PIN) ══════════ -->
+<div class="card" style="margin-bottom:14px;padding:12px 14px">
+  <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <span style="font-size:13px;font-weight:800;color:var(--ledger);white-space:nowrap">🔗 기기 간 동기화</span>
+    <input type="text" inputmode="numeric" id="syncPin" placeholder="PIN 4~8자리 (다른 앱과 동일 PIN 사용 가능)" maxlength="8" style="flex:1;min-width:160px;padding:8px 10px;border:1px solid var(--line-strong);border-radius:8px;font-size:13px">
+    <button class="apibtn" id="syncPinBtn" style="white-space:nowrap">연결</button>
+    <button class="apibtn" id="syncPushBtn" style="white-space:nowrap;background:#5A6B7C;display:none">지금 저장</button>
+  </div>
+  <div class="hint" id="syncStatus" style="margin:6px 0 0">같은 PIN을 입력한 모든 기기에서 취득세·재산세·종부세·양도세 입력값이 공유됩니다. (실거래가 검색 결과는 동기화 대상이 아닙니다)</div>
+</div>
+
 <!-- ══════════ 실거래가 조회 (매매+전월세 통합) ══════════ -->
+
 <div class="mpanel on" id="mpRE">
 <div class="re-seg" id="reSeg" style="display:flex;gap:8px;margin:0 0 14px;background:#EDF1F5;padding:5px;border-radius:12px">
   <button class="re-seg-btn on" data-v="sale" onclick="showRE('sale')" style="flex:1;padding:10px;border:none;border-radius:8px;font-weight:800;font-size:14px;cursor:pointer;font-family:inherit;background:#fff;color:var(--ledger);box-shadow:0 1px 3px rgba(0,0,0,.12)">🏢 매매 실거래가</button>
@@ -1959,6 +1971,86 @@ initWorkerMode();
 
 // 초기 렌더
 calcAcq(); calcProp(); jbRender(); cgRender();
+
+/* ══════════════════ 기기 간 동기화 (PIN) ══════════════════ */
+const SYNC_WORKER = 'https://realestate-tax-suite-api.yjjn2005.workers.dev';
+const SYNC_PIN_STORE = 'retax_sync_pin';
+// 동기화 대상: 취득세·재산세·종부세·양도세 입력값만(실거래가 검색결과는 재조회 가능하므로 제외)
+const SYNC_INPUTS = ['aq_price','pt_price','pt_prevTax','jb_price','jb_residVal','cg_acq','cg_sale','cg_exp','cg_hold','cg_res','cg_swapVal','cg_swapCash'];
+const SYNC_CHECKS = ['aq_family','aq_first','aq_temp2','aq_inheritOne'];
+const SYNC_SELECTS = ['aq_houses','aq_type','jb_age','jb_hold','jb_live','cg_owner'];
+const SYNC_SEGS = ['aq_seg_adj','aq_seg_corp','aq_seg_area','pt_seg_one','jb_seg_house','jb_seg_resid','jb_seg_local','cg_seg_kind'];
+
+async function syncKeyOf(pin){
+  const b = await crypto.subtle.digest('SHA-256', new TextEncoder().encode('retax:'+pin));
+  return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
+function syncCollect(){
+  const s={};
+  SYNC_INPUTS.forEach(id=>{ const el=$(id); if(el) s[id]=el.value; });
+  SYNC_CHECKS.forEach(id=>{ const el=$(id); if(el) s[id]=el.checked; });
+  SYNC_SELECTS.forEach(id=>{ const el=$(id); if(el) s[id]=el.value; });
+  SYNC_SEGS.forEach(id=>{ const b=document.querySelector('#'+id+' button.on'); if(b) s[id]=b.dataset.v; });
+  s.__t = Date.now();
+  return s;
+}
+function syncApply(s){
+  if(!s) return;
+  SYNC_INPUTS.forEach(id=>{ if(s[id]!==undefined && $(id)) $(id).value=s[id]; });
+  SYNC_CHECKS.forEach(id=>{ if(s[id]!==undefined && $(id)) $(id).checked=s[id]; });
+  SYNC_SELECTS.forEach(id=>{ if(s[id]!==undefined && $(id)) $(id).value=s[id]; });
+  SYNC_SEGS.forEach(id=>{ if(s[id]!==undefined) setSeg(id, s[id]); });
+  calcAcq(); calcProp(); jbRender(); cgRender();
+}
+async function syncPush(){
+  const pin=$('syncPin').value.trim();
+  if(pin.length<4) return;
+  try{
+    const key=await syncKeyOf(pin);
+    await fetch(`${SYNC_WORKER}/sync?key=${key}`, {method:'PUT', body: JSON.stringify(syncCollect())});
+    $('syncStatus').textContent = `✅ 저장됨 (${new Date().toLocaleTimeString('ko-KR')}) — 같은 PIN의 다른 기기에서 "연결"을 누르면 이 값을 받아옵니다.`;
+  }catch(e){ $('syncStatus').textContent = '⚠ 저장 실패: '+e.message; }
+}
+async function syncPull(showEmptyMsg){
+  const pin=$('syncPin').value.trim();
+  if(pin.length<4){ $('syncStatus').textContent='PIN은 4자리 이상 입력해 주세요.'; return; }
+  $('syncStatus').textContent='불러오는 중…';
+  try{
+    const key=await syncKeyOf(pin);
+    const res=await fetch(`${SYNC_WORKER}/sync?key=${key}`);
+    if(res.status===404){
+      if(showEmptyMsg) $('syncStatus').textContent='아직 저장된 값이 없습니다. 입력 후 "지금 저장"을 눌러주세요.';
+      $('syncPushBtn').style.display='';
+      localStorage.setItem(SYNC_PIN_STORE, pin);
+      return;
+    }
+    const data=await res.json();
+    syncApply(data);
+    localStorage.setItem(SYNC_PIN_STORE, pin);
+    $('syncPushBtn').style.display='';
+    $('syncStatus').textContent = `✅ 연결됨 — 마지막 저장: ${data.__t?new Date(data.__t).toLocaleString('ko-KR'):'?'}`;
+  }catch(e){ $('syncStatus').textContent='⚠ 연결 실패: '+e.message; }
+}
+$('syncPinBtn').onclick=()=>syncPull(true);
+$('syncPushBtn').onclick=syncPush;
+// 입력값이 바뀔 때마다 자동 저장(PIN 연결된 경우, 1.2초 debounce)
+let __syncTimer=null;
+function syncAutoPush(){
+  if(!localStorage.getItem(SYNC_PIN_STORE) || !$('syncPin').value.trim()) return;
+  clearTimeout(__syncTimer);
+  __syncTimer=setTimeout(syncPush, 1200);
+}
+[...SYNC_INPUTS,...SYNC_CHECKS,...SYNC_SELECTS].forEach(id=>{
+  const el=$(id); if(el){ el.addEventListener('input',syncAutoPush); el.addEventListener('change',syncAutoPush); }
+});
+SYNC_SEGS.forEach(id=>{
+  document.querySelectorAll('#'+id+' button').forEach(b=>b.addEventListener('click', syncAutoPush));
+});
+// 저장된 PIN이 있으면 자동 연결
+try{
+  const savedPin=localStorage.getItem(SYNC_PIN_STORE);
+  if(savedPin){ $('syncPin').value=savedPin; syncPull(false); }
+}catch(e){}
 </script>
 </body>
 </html>
