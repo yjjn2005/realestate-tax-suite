@@ -270,6 +270,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
     </div>
     <div class="err" id="rtErr"></div>
     <div class="ok" id="rtOk"></div>
+    <div id="rtSyncNote" style="display:none;margin-top:6px;padding:8px 10px;background:#EAF3EC;border:1px solid #3F7A56;border-radius:8px;font-size:12px;color:#2C5C40;font-weight:600"></div>
     <div id="rtSummary" style="margin-top:10px"></div>
     <div id="rtResult" style="margin-top:8px"></div>
     <div class="warn">
@@ -1397,6 +1398,54 @@ function onPyeongChange(){
   ).sort((a,b)=> dealKey(b)-dealKey(a));
   if(allItems.length===0) return;
   renderSummaryAndTable(allItems, `${esc(dong)} · ${esc(apt)} · ${areaKey}㎡`);
+  syncToRent(dong, apt, areaKey);
+}
+
+// ── 매매 탭에서 선택한 구/동/단지/평형을 전월세 탭에 자동 반영 ──
+async function syncToRent(dong, apt, areaKey){
+  const lawd = $('lawdCd').value;
+  $('rtLawdCd').value = lawd;
+  $('rtLookback').value = $('lookbackMonths').value;
+  const noteEl = $('rtSyncNote');
+  if(noteEl){ noteEl.style.display=''; noteEl.textContent = `⏳ 매매 탭에서 선택한 "${dong} · ${apt} · ${areaKey}㎡" 기준으로 전월세 데이터를 불러오는 중…`; }
+
+  // 같은 구를 이미 불러온 상태면 재조회 생략(API 호출 절약)
+  if(window.__rentLawd !== lawd || !window.__rentAll){
+    try{ await loadRentData(); }catch(e){}
+    window.__rentLawd = lawd;
+  }
+  if(!window.__rentAll){
+    if(noteEl){ noteEl.textContent = '⚠ 전월세 데이터를 불러오지 못해 동/단지 자동 선택을 건너뜁니다. (전월세 탭에서 직접 확인해 주세요)'; }
+    return;
+  }
+
+  // 동 자동 선택
+  if([...$('rtDong').options].some(o=>o.value===dong)){
+    $('rtDong').value = dong;
+    onRentDongChange();
+  } else {
+    if(noteEl){ noteEl.textContent = `⚠ "${dong}"의 전월세 거래 내역이 없어 동만 자동 선택하지 못했습니다. 다른 조건은 반영됐습니다.`; }
+    return;
+  }
+  // 단지 자동 선택
+  if([...$('rtApt').options].some(o=>o.value===apt)){
+    $('rtApt').value = apt;
+    onRentAptChange();
+  } else {
+    if(noteEl){ noteEl.textContent = `⚠ "${apt}"의 전월세 거래 내역이 없어 단지만 자동 선택하지 못했습니다. 동까지는 반영됐습니다.`; }
+    return;
+  }
+  // 평형 자동 선택(가장 가까운 면적)
+  const pOpts = [...$('rtPyeong').options].filter(o=>o.value!=='');
+  if(pOpts.length){
+    let best = pOpts[0], bestDiff = Infinity;
+    pOpts.forEach(o=>{ const diff = Math.abs(parseFloat(o.value)-areaKey); if(diff<bestDiff){ bestDiff=diff; best=o; } });
+    $('rtPyeong').value = best.value;
+    onRentPyeongChange();
+    if(noteEl){ noteEl.textContent = `✅ 전월세 탭에 "${dong} · ${apt} · ${best.value}㎡" 자동 반영 완료`; setTimeout(()=>{ if(noteEl) noteEl.style.display='none'; },4000); }
+  } else {
+    if(noteEl){ noteEl.textContent = `⚠ 해당 단지의 전월세 평형 데이터가 없습니다. 동·단지까지는 반영됐습니다.`; }
+  }
 }
 
 function renderSummaryAndTable(allItems, contextLabel){
@@ -1582,6 +1631,8 @@ async function loadRentData(){
   rtReset('rtDong','먼저 위에서 불러오기 클릭');
   rtReset('rtApt','동을 먼저 선택하세요');
   rtReset('rtPyeong','단지를 먼저 선택하세요');
+  window.__rentAll = null;
+  window.__rentLawd = null;
 
   if(!KEYLESS && !keyRaw){
     errEl.style.display='';
@@ -1631,6 +1682,7 @@ async function loadRentData(){
   }
 
   window.__rentAll = all;
+  window.__rentLawd = lawd;
   okEl.textContent = `${guLabel} 최근 ${months}개월 전월세 ${all.length.toLocaleString()}건 로딩 완료`
     + (failed.length?` (조회 실패한 월: ${failed.join(', ')})`:'')
     + ' — 이제 동 → 단지 → 평형 순서로 선택하세요.';
