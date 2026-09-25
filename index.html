@@ -112,7 +112,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
   <div class="wrap">
     <div class="doc-no">유앤김 패밀리 · U&amp;KIM FAMILY</div>
     <h1>26세법개정안 부동산 세금 통합계산기</h1>
-    <div class="doc-sub">취득세 · 재산세 · 종합부동산세 · 양도소득세 <b>4종 통합</b> 시뮬레이션</div>
+    <div class="doc-sub">취득세 · 재산세 · 종합부동산세 · 양도소득세 <b>4종 통합</b> 시뮬레이션 · 최종 업데이트 <b>2026-09-25</b></div>
   </div>
 </header>
 
@@ -125,6 +125,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
   <button class="mtab" onclick="showMain(3)">📋 재산세</button>
   <button class="mtab" onclick="showMain(4)">🏛️ 종부세</button>
   <button class="mtab" onclick="showMain(5)">📤 양도세</button>
+  <button class="mtab" onclick="showMain(6)">⚖️ 법령근거</button>
 </div>
 
 <!-- ══════════ 매매 실거래가 검색 ══════════ -->
@@ -459,6 +460,52 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 </section>
 </div>
 
+<!-- ══════════ 법령근거 ══════════ -->
+<div class="mpanel" id="mp4">
+<section>
+  <div class="sec-label"><span class="tag">근거</span><h2>1세대1주택 판정 · 종부세 법령 근거</h2><small>최종 업데이트: <b id="lawUpdateDate">2026-09-25</b> · 국가법령정보센터(law.go.kr) 기준</small></div>
+  <div class="card" style="line-height:1.7">
+
+    <b style="font-size:15px">① 1세대1주택 판정 기준 — 세목별로 다릅니다</b>
+    <table class="ledger-tbl" style="margin:8px 0 16px">
+      <tr><th>세목</th><th>판정 근거 법령</th><th>핵심 요건</th></tr>
+      <tr><td>종부세</td><td>종합부동산세법 제8조 제1항 제1호, 같은 법 시행령</td><td>과세기준일(매년 6.1) 현재 세대원 중 1인이 단독 소유 + 세대 전원 무주택. 본인·배우자·동거 직계존비속 기준으로 합산 판단</td></tr>
+      <tr><td>양도세</td><td>소득세법 제89조 제1항 제3호, 시행령 제154조</td><td>양도일 현재 1세대가 국내 1주택 보유 + 보유기간 2년 이상(취득 당시 조정대상지역은 거주기간 2년 추가, 일부 특례주택은 3년)</td></tr>
+      <tr><td>재산세</td><td>지방세법 시행령 제110조의2</td><td>1세대1주택자에 한해 공정시장가액비율 우대(43~45%) 및 공시가격 9억 이하 특례세율 적용</td></tr>
+    </table>
+
+    <b style="font-size:15px">② 종합부동산세 핵심 조문</b>
+    <table class="ledger-tbl" style="margin:8px 0 16px">
+      <tr><th>내용</th><th>조문</th></tr>
+      <tr><td>납세의무자</td><td>종부세법 제7조(주택분), 제12조(토지분)</td></tr>
+      <tr><td>과세기준일</td><td>종부세법 제3조 — 매년 6월 1일 현재 소유자가 납세의무자</td></tr>
+      <tr><td><b>기본공제 12억(1세대1주택) / 9억(그 외)</b></td><td><b>종부세법 제8조 제1항 제1호·제3호</b> — "대통령령으로 정하는 1세대1주택자: 12억원", "제1호·제2호에 해당하지 아니하는 자: 9억원". <u>거주자·비거주자 구분 없이 동일하게 적용</u>되며, 부부 공동명의 1주택은 12억 단독공제(특례 신청) 또는 각자 9억씩 18억 공제 중 선택 가능(종부세법 제10조의2, 매년 9.16~9.30 신청)</td></tr>
+      <tr><td>공정시장가액비율</td><td>종부세법 시행령 제2조의4 — 2026년 60%</td></tr>
+      <tr><td>세율</td><td>종부세법 제9조 — 2주택 이하 0.5~2.7%, 3주택 이상(과표 12억 초과분) 0.5~5.0% 누진</td></tr>
+      <tr><td>세액공제(고령자·장기보유)</td><td>종부세법 제9조 제6항·제8항 — 1세대1주택자 한정, 60세 이상 20~40% + 5년 이상 보유 20~50%, 합산한도 80%</td></tr>
+      <tr><td>재산세액 공제</td><td>종부세법 제9조 제3항 — 종부세 과표에 대응하는 재산세 상당액 차감(이중과세 조정)</td></tr>
+      <tr><td>부가세</td><td>농어촌특별세법 제5조 제1항 — 종부세 납부세액의 20%</td></tr>
+      <tr><td>합산배제 신고</td><td>종부세법 시행령 제4조 등 — 임대주택·미분양주택 등은 매년 9.16~9.30 신고 시 과세표준 합산 제외</td></tr>
+    </table>
+
+    <b style="font-size:15px">③ 양도소득세 1세대1주택 비과세 핵심 조문</b>
+    <table class="ledger-tbl" style="margin:8px 0 16px">
+      <tr><th>내용</th><th>조문</th></tr>
+      <tr><td>비과세 규정</td><td>소득세법 제89조 제1항 제3호 가목 — 양도가액 12억원 이하분 비과세, 12억 초과분은 과세(안분과세, 같은 조 제2항)</td></tr>
+      <tr><td>보유·거주 요건</td><td>소득세법 시행령 제154조 제1항 — 보유 2년(조정대상지역 취득 시 거주 2년 추가), 일시적 2주택 등 특례는 제155조</td></tr>
+      <tr><td>장기보유특별공제(1세대1주택 특례, 표2)</td><td>소득세법 제95조 제2항, 시행령 제159조의4 — 보유 연4%+거주 연4%, 최대 80%(10년+10년). 거주 2년 미만이면 일반공제(표1, 연2%·최대30%) 적용, 2028~29년은 개편안 별도 반영</td></tr>
+      <tr><td>세율·기본공제</td><td>소득세법 제104조(세율 6~45%), 제103조(기본공제 250만원)</td></tr>
+      <tr><td>지방소득세</td><td>지방세법 제92조 — 양도소득세액의 10%</td></tr>
+    </table>
+
+    <p style="margin:10px 0 0;font-size:12px;color:var(--ink-soft)">
+      본 탭은 국가법령정보센터(law.go.kr) 조문을 요약 정리한 참고 자료이며, 법령 전문 확인은 <a href="https://www.law.go.kr" target="_blank" rel="noopener">law.go.kr</a>에서 하시기 바랍니다.
+      2027년 이후 개편안(거주 14억/비거주 9억 등)은 <b>2026-09-25 기준 국회 미통과 정부안</b>이며, 통과 시 본 탭과 계산 로직을 함께 업데이트합니다.
+    </p>
+  </div>
+</section>
+</div>
+
 <details>
   <summary>세목별 계산 근거·가정 보기</summary>
   <div class="detail-body">
@@ -500,7 +547,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 </details>
 
 <footer>
-  © 유앤김 패밀리 · YU&amp;KIM FAMILY OFFICE — 취득세·재산세·종부세·양도세 통합 시뮬레이션 (참고용, 법적 효력 없음)
+  © 유앤김 패밀리 · YU&amp;KIM FAMILY OFFICE — 취득세·재산세·종부세·양도세 통합 시뮬레이션 + 법령근거 (참고용, 법적 효력 없음) · 최종 업데이트 2026-09-25
 </footer>
 
 </div>
@@ -529,7 +576,7 @@ function bindSeg(id,cb){
 function segVal(id){ const b=document.querySelector('#'+id+' button.on'); return b?b.dataset.v:null; }
 
 // ── 메인 탭 전환 (0:매매검색 1:전월세검색 2:취득세 3:재산세 4:종부세 5:양도세) ──
-const PANELS = ['mpSale','mpRent','mp0','mp1','mp2','mp3'];
+const PANELS = ['mpSale','mpRent','mp0','mp1','mp2','mp3','mp4'];
 function showMain(n){
   PANELS.forEach((id,i)=>{
     $(id).classList.toggle('on', i===n);
