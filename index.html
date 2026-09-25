@@ -107,6 +107,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 </style>
 </head>
 <body>
+<div id="syncToast" style="display:none;position:fixed;top:14px;left:50%;transform:translateX(-50%);z-index:999;background:#2C5C40;color:#fff;padding:10px 18px;border-radius:20px;font-size:13px;font-weight:700;box-shadow:0 4px 14px rgba(0,0,0,.25)">✅ 취득세·재산세·종부세·양도세(매도가) 전체 탭에 반영되었습니다</div>
 
 <header>
   <div class="wrap">
@@ -282,7 +283,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 <!-- ══════════ 취득세 ══════════ -->
 <div class="mpanel on" id="mp0">
 <section>
-  <div class="sec-label"><span class="tag">입력</span><h2>취득 조건</h2><small>금액 단위: 억원</small></div>
+  <div class="sec-label"><span class="tag">입력</span><h2>취득 조건</h2><small>금액 단위: 억원 · <a href="javascript:void(0)" onclick="showMain(0)" style="color:var(--ledger);font-weight:700">🔗 매매 실거래가에서 물건 조회</a></small></div>
   <div class="card">
     <div class="grid">
       <div class="field">
@@ -347,7 +348,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 <!-- ══════════ 재산세 ══════════ -->
 <div class="mpanel" id="mp1">
 <section>
-  <div class="sec-label"><span class="tag">입력</span><h2>보유 현황</h2><small>과세기준일: 매년 6월 1일</small></div>
+  <div class="sec-label"><span class="tag">입력</span><h2>보유 현황</h2><small>과세기준일: 매년 6월 1일 · <a href="javascript:void(0)" onclick="showMain(0)" style="color:var(--ledger);font-weight:700">🔗 매매 실거래가에서 물건 조회</a></small></div>
   <div class="card">
     <div class="grid">
       <div class="field">
@@ -377,7 +378,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 <!-- ══════════ 종부세 ══════════ -->
 <div class="mpanel" id="mp2">
 <section>
-  <div class="sec-label"><span class="tag">입력</span><h2>보유 현황 입력</h2><small>연도별(2026~2029) 비교</small></div>
+  <div class="sec-label"><span class="tag">입력</span><h2>보유 현황 입력</h2><small>연도별(2026~2029) 비교 · <a href="javascript:void(0)" onclick="showMain(0)" style="color:var(--ledger);font-weight:700">🔗 매매 실거래가에서 물건 조회</a></small></div>
   <div class="card">
     <div class="grid">
       <div class="field">
@@ -425,7 +426,7 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
 <!-- ══════════ 양도세 ══════════ -->
 <div class="mpanel" id="mp3">
 <section>
-  <div class="sec-label"><span class="tag">입력</span><h2>양도 조건</h2><small>1세대 1주택 가정 · 금액 단위: 억원</small></div>
+  <div class="sec-label"><span class="tag">입력</span><h2>양도 조건</h2><small>1세대 1주택 가정 · 금액 단위: 억원 · <a href="javascript:void(0)" onclick="showMain(0)" style="color:var(--ledger);font-weight:700">🔗 매매 실거래가에서 물건 조회</a></small></div>
   <div class="card">
     <div class="grid">
       <div class="field" style="grid-column:1/-1">
@@ -433,8 +434,8 @@ table.ref td:first-child{text-align:left;color:var(--ink-soft)}
         <div class="seg" id="cg_seg_kind"><button data-v="sell" class="on">매도</button><button data-v="swap">교환(맞바꿈)</button></div>
         <div class="hint" id="cg_kindHint" style="display:none">교환도 세법상 <b>양도</b>입니다. 양도가액은 <b>교환으로 받는 부동산의 시가 ± 정산금</b>으로 계산됩니다.</div>
       </div>
-      <div class="field"><label>취득가액</label><div class="unit-in"><input type="number" id="cg_acq" value="8" step="0.5" min="0"><span class="u">억</span></div></div>
-      <div class="field" id="cg_fSale"><label>양도(예정)가액</label><div class="unit-in"><input type="number" id="cg_sale" value="15" step="0.5" min="0"><span class="u">억</span></div></div>
+      <div class="field"><label>매수년도 취득가액 <span style="font-weight:400;color:var(--ink-soft);font-size:11px">(직접 입력)</span></label><div class="unit-in"><input type="number" id="cg_acq" value="8" step="0.5" min="0"><span class="u">억</span></div></div>
+      <div class="field" id="cg_fSale"><label>매도 희망가액 <span style="font-weight:400;color:var(--ink-soft);font-size:11px">(최근 실거래가 자동반영 가능)</span></label><div class="unit-in"><input type="number" id="cg_sale" value="15" step="0.5" min="0"><span class="u">억</span></div></div>
       <div class="field" id="cg_fSwapVal" style="display:none"><label>받는 부동산의 시가</label><div class="unit-in"><input type="number" id="cg_swapVal" value="12" step="0.5" min="0"><span class="u">억</span></div>
         <div class="hint">감정평가액 등 시가</div></div>
       <div class="field" id="cg_fSwapCash" style="display:none"><label>정산금 (받으면 +, 주면 −)</label><div class="unit-in"><input type="number" id="cg_swapCash" value="3" step="0.5"><span class="u">억</span></div>
@@ -1423,6 +1424,14 @@ function renderSummaryAndTable(allItems, contextLabel){
         <button class="apibtn" onclick="applyDirect(${latest.amt},'sale')">최근가 → 양도가 반영</button>
       </div>
     </div>
+    <div class="card" style="background:#EAF3EC;border-color:#3F7A56;margin-top:8px">
+      <div style="font-size:11px;font-weight:700;color:#2C5C40;letter-spacing:.08em;margin-bottom:6px">🔗 이 물건을 전체 탭(취득세·재산세·종부세·양도세)에 한번에 반영</div>
+      <div class="hint" style="margin:0 0 8px">세대구분을 한 번만 선택하면 4개 탭의 주택수/1세대1주택 설정이 동시에 맞춰지고, 가격도 함께 채워집니다. 재산세·종부세는 아래 <b>추정 공시가격</b>(현실화율 기준)이 사용됩니다.</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+        <div class="seg" id="allHouseType"><button data-v="Y" class="on" onclick="toggleSegBtn(this)">1세대1주택</button><button data-v="N" onclick="toggleSegBtn(this)">다주택/법인</button></div>
+        <button class="apibtn" style="background:#2C5C40" onclick="applyAllTabs(${latest.amt},${avg})">최근가·평균공시가 기준 → 전체 탭 반영</button>
+      </div>
+    </div>
     <div class="card" style="background:#FBF3E5;border-color:var(--gold);margin-top:8px">
       <div style="font-size:11px;font-weight:700;color:#7A5A17;letter-spacing:.08em;margin-bottom:6px">추정 공시가격 → 재산세·종부세 반영</div>
       <div class="hint" style="margin:0 0 8px">
@@ -1479,6 +1488,47 @@ function renderEstimatedGosiga(latestAmt, avgAmt){
   if(elA) elA.textContent = fmtManwon(gAvg);
   window.__estGosigaLatest = gLatest;
   window.__estGosigaAvg = gAvg;
+}
+function toggleSegBtn(btn){
+  btn.parentElement.querySelectorAll('button').forEach(b=>b.classList.remove('on'));
+  btn.classList.add('on');
+}
+function setSeg(segId, value){
+  const btn = document.querySelector('#'+segId+' button[data-v="'+value+'"]');
+  if(btn) btn.click();
+}
+function applyAllTabs(latestAmt, avgAmt){
+  const isOneEl = document.querySelector('#allHouseType button.on');
+  const isOne = isOneEl ? isOneEl.dataset.v : 'Y';
+  const ratio = (parseFloat($('realizeRatio')?.value)||69)/100;
+  const saleEok = latestAmt/10000; // 만원 → 억원
+  const gosigaEok = Math.round(avgAmt*ratio)/10000;
+
+  // 취득세
+  $('aq_price').value = saleEok;
+  $('aq_houses').value = isOne==='Y' ? '1' : '2';
+  calcAcq();
+
+  // 재산세
+  $('pt_price').value = gosigaEok;
+  setSeg('pt_seg_one', isOne);
+  calcProp();
+
+  // 종부세
+  $('jb_price').value = gosigaEok;
+  JB.houses = isOne==='Y' ? 1 : 2;
+  setSeg('jb_seg_house', String(JB.houses));
+  jbRender();
+
+  // 양도세 — 매도 희망가만 자동 반영(취득가는 실제 매수 시점 가격을 직접 입력)
+  $('cg_sale').value = saleEok;
+  cgRender();
+
+  const badge = $('allTabsAppliedNote');
+  if(badge) badge.style.display='';
+  const toast = $('syncToast');
+  if(toast){ toast.style.display=''; clearTimeout(window.__toastTimer); window.__toastTimer=setTimeout(()=>{toast.style.display='none';},3200); }
+  window.scrollTo({top:0, behavior:'smooth'});
 }
 function applyGosiga(baseAmt, target){
   const ratio = (parseFloat($('realizeRatio')?.value)||69)/100;
